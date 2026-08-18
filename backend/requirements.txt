@@ -1,0 +1,17 @@
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+pydantic==2.9.0
+pydantic-settings==2.6.0
+python-multipart==0.0.12
+supabase==2.9.0
+postgrest==0.17.0
+langchain==0.3.7
+langchain-openai==0.2.8
+langchain-community==0.3.5
+openai==1.54.0
+sentence-transformers==2.7.0
+psycopg2-binary==2.9.10
+pandas==2.2.3
+openpyxl==3.1.5
+python-dotenv==1.0.1
+redis==5.2.0

@@ -1,0 +1,22 @@
+@media screen and (max-width: 320px) {
+    .welcome-photo p {
+        font-size : 10px;
+    }
+    .welcome-photo img {
+        height: 50%;
+    }
+    .chat-container{
+        width: 90%;
+    }
+    .notice-label{
+        font-size: 10px;
+    }
+    .notice-text{
+        font-size: 10px;
+    }
+    .chat-input{
+        width:100%;
+        height:1vh;
+        margin-bottom:100px;
+    }
+}

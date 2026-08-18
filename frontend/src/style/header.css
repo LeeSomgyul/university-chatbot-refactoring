@@ -1,0 +1,151 @@
+/* 언어 전환 컨테이너 */
+.language-toggle-container {
+    position: relative;
+    display: inline-block;
+}
+
+/* 언어 전환 버튼 */
+.language-toggle-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 8px 12px;
+    background-color: #f8f9fa;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.language-toggle-btn:hover {
+    background-color: #e9ecef;
+    border-color: #adb5bd;
+}
+
+/* 언어 아이콘 */
+.language-icon {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+}
+
+/* 드롭다운 메뉴 */
+.language-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    /* z-index: 1000; */
+    min-width: 120px;
+    margin-top: 2px;
+}
+
+/* 언어 옵션 */
+.language-option {
+    padding: 10px 15px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s ease;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.language-option:last-child {
+    border-bottom: none;
+}
+
+.language-option:hover {
+    background-color: #f8f9fa;
+    color: #007bff;
+    font-weight: 500;
+}
+
+.language-option:first-child:hover {
+    border-radius: 6px 6px 0 0;
+}
+
+.language-option:last-child:hover {
+    border-radius: 0 0 6px 6px;
+}
+
+/* 활성화된 언어 옵션 스타일 (선택사항) */
+.language-option.active {
+    background-color: #e3f2fd;
+    color: #1976d2;
+    font-weight: 600;
+}
+
+@media (min-width: 640px) {
+    .header {
+        height: 52px;
+        padding: 0 16px;
+    }
+
+    .new-chat-btn {
+        padding: 6px;
+    }
+
+    .new-chat-btn img {
+        height: 28px;
+    }
+
+    .logo-link img {
+        height: 28px;
+    }
+
+    .language-container {
+        padding: 6px;
+    }
+
+    .language-label {
+        padding: 4px 8px;
+        font-size: 14px;
+    }
+
+    .language-icon {
+        width: 14px;
+        height: 14px;
+    }
+
+    .language-dropdown {
+        margin-top: 8px;
+        width: 112px;
+    }
+
+    .language-option {
+        padding: 8px 12px;
+        font-size: 14px;
+    }
+}
+
+/* 데스크톱 (768px+)
+@media (min-width: 768px) {
+    .header {
+        height: 56px;
+        padding: 0 24px;
+    }
+
+    .new-chat-btn img {
+        height: 32px;
+    }
+
+    .logo-link img {
+        height: 32px;
+    }
+} */
+
+@media (max-width: 412px) {
+        .header {
+        height: 52px;
+        width: 100px;
+        padding: 0 16px;
+    }
+
+    .language-toggle-btn {
+        padding: 8px 12px;  
+        font-size: 14px; 
+    }
+}

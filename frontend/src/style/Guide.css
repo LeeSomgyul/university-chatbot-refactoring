@@ -1,0 +1,208 @@
+/* Guide 컴포넌트 스타일 - Tailwind @apply 지시어 사용 */
+
+/* 이용안내 버튼 */
+.guide-button {
+  position: fixed;
+  margin: 30px;
+  bottom: 2rem;
+  right: 2rem;
+  width: 5rem;
+  height: 4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+
+}
+
+@media (max-width: 1200px) {
+  .guide-button {
+    display: none; /* 화면 너비 768px 이하일 때 숨김 */
+  }
+}
+
+.guide-button:hover {
+
+}
+
+.guide-button-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  object-fit: contain;
+  transition: transform 0.2s;
+}
+
+.guide-button:hover .guide-button-icon {
+  transform: scale(1.05);
+}
+
+/* ===== 모드 1: 이미지 모달 + 좌우 버튼 ===== */
+
+/* 모달 오버레이 배경 */
+.guide-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+/* 이미지 모달 컨테이너 (메인 컨텐츠) */
+.guide-image-container {
+    position: relative;
+    max-width: 500px;
+    width: 100%;
+    height: auto;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    border-radius: 12px;
+    overflow: hidden;
+    background-color: white; /* 이미지 로딩 중 배경 */
+}
+
+/* 메인 이미지 스타일 */
+.guide-main-image {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+/* 오버레이 우측 최상단 고정 닫기 버튼 */
+.guide-overlay-close-fixed {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    color: white;
+    font-size: 1.4rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    z-index: 100;
+}
+
+.guide-overlay-close-fixed:hover {
+    background: rgba(0, 0, 0, 0.8);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: scale(1.1);
+}
+
+/* 이미지 로드 실패 시 fallback */
+.guide-image-fallback {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 2rem;
+    z-index: 1;
+}
+
+.guide-image-fallback h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: #374151;
+}
+
+.guide-image-fallback p {
+    font-size: 1rem;
+    color: #6b7280;
+    margin: 0;
+}
+
+/* 좌우 네비게이션 버튼 - 흰색 박스에서 약 5cm(190px) 거리 */
+.guide-nav-button {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.9);
+    border: 2px solid rgba(0, 0, 0, 0.1);
+    color: #374151;
+    font-size: 1.5rem;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.guide-nav-button:hover {
+    background-color: white;
+    border-color: rgba(0, 0, 0, 0.2);
+    transform: translateY(-50%) scale(1.05);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.guide-nav-left {
+    left: 120px; /* 흰색 박스에서 약 5cm 거리 */
+}
+
+.guide-nav-right {
+    right: 120px; /* 흰색 박스에서 약 5cm 거리 */
+}
+
+/* ===== 모드 2: 검은색 오버레이만 ===== */
+
+/* 단순 오버레이 스타일 */
+.guide-simple-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    z-index: 2000;
+}
+
+/* 오버레이 닫기 버튼 */
+.guide-overlay-close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background-color: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.guide-overlay-close:hover {
+    background-color: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.guide-close-icon {
+    width: 20px;
+    height: 20px;
+}
