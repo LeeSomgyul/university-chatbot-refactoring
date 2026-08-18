@@ -52,33 +52,36 @@ except Exception as e:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """앱 생명주기 관리"""
-    # 시작 시
+    # 1. 시작 시
     print("🚀 애플리케이션 시작")
-    print(f"📍 환경: {settings.environment}")
-    print(f"🤖 LLM 모델: {settings.model_name}")
+    print(f"✔️ 환경: {settings.environment}")
+    print(f"✔️ LLM 모델: {settings.model_name}")
     
+    # 1-1. 30분마다 1시간 동안 활동 없는 세션을 삭제하는 백그라운드 스케줄러 함수
     async def cleanup_old_sessions():
         while True:
-            await asyncio.sleep(1800)  # 30분마다
-            deleted = session_store.clear_old_sessions(hours=1)  # 1시간 미사용
+            await asyncio.sleep(1800)
+            deleted = session_store.clear_old_sessions(hours=1) 
             if deleted > 0:
                 print(f"🗑️ 오래된 세션 {deleted}개 정리됨")
     
     cleanup_task = asyncio.create_task(cleanup_old_sessions())
     
+    # 2. 서버 동작 실행중 (여기서 서버가 돌아가는것)
     yield
     
-    # 종료 시
+    # 3. 종료 시
     cleanup_task.cancel()
     print("👋 애플리케이션 종료")
 
 
-# FastAPI 앱 생성
+# [FastAPI 앱 생성]
+# 서버 구동 시 uvicorn app.main:app --reload로 실행 
 app = FastAPI(
     title="University Chatbot API",
     description="순천대학교 통합 챗봇 API (챗봇 + FAQ + 자동완성)",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan # 이 함수가 실행되면서 서버가 실행된다
 )
 
 # CORS 설정
