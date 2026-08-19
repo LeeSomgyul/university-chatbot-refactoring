@@ -4,7 +4,7 @@
 from typing import Dict, List, Any, Optional
 from app.database.supabase_client import supabase
 from app.models.schemas import UserProfile
-from app.domain.equivalent_course.service import equivalent_course_service_optimized
+from app.domain.equivalent_course.service import equivalent_course_service
 from app.domain.curriculum.rules import get_rules, get_overflow_target_key
 
 class CurriculumServiceOptimized:
@@ -227,7 +227,7 @@ class CurriculumServiceOptimized:
                     
                     # 필수 과목 매칭 (최적화된 동일대체 체크)
                     for required_code in req_info['required_all']:
-                        if equivalent_course_service_optimized.is_equivalent(course_code, required_code):
+                        if equivalent_course_service.is_equivalent(course_code, required_code):
                             req_info['taken'] += credit
                             req_info['taken_courses'].append(course_info)
                             is_matched = True
@@ -236,7 +236,7 @@ class CurriculumServiceOptimized:
                     # 선택 과목 매칭
                     if not is_matched:
                         for selectable_code in req_info['selectable_codes']:
-                            if equivalent_course_service_optimized.is_equivalent(course_code, selectable_code):
+                            if equivalent_course_service.is_equivalent(course_code, selectable_code):
                                 req_info['taken'] += credit
                                 req_info['taken_courses'].append(course_info)
                                 is_matched = True
@@ -260,7 +260,7 @@ class CurriculumServiceOptimized:
                     
                     all_codes = required_all + required_one_of + selectable
                     for req_code in all_codes:
-                        if equivalent_course_service_optimized.is_equivalent(course_code, req_code):
+                        if equivalent_course_service.is_equivalent(course_code, req_code):
                             track_info['taken'] += credit
                             track_info['taken_courses'].append(course_info)
                             matched = True
@@ -483,7 +483,7 @@ class CurriculumServiceOptimized:
         """동일대체 교과목 조회 (최적화된 서비스 사용)"""
         try:
             # 최적화된 서비스에서 히스토리 가져오기
-            history = equivalent_course_service_optimized.get_course_history(course_code)
+            history = equivalent_course_service.get_course_history(course_code)
             
             alternatives = []
             seen = set()
@@ -519,7 +519,7 @@ class CurriculumServiceOptimized:
         
         for course in courses_taken:
             # 해당 과목의 전체 동일대체 체인 추가
-            all_equiv = equivalent_course_service_optimized.get_all_equivalent_codes(course.course_code)
+            all_equiv = equivalent_course_service.get_all_equivalent_codes(course.course_code)
             taken_codes.update(all_equiv)
         
         # ===== 2. 필수 과목 조회 (캐싱) =====

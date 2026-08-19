@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 from app.domain.curriculum.service import curriculum_service_optimized as curriculum_service
 from app.models.schemas import UserProfile, CourseInput
-from app.domain.equivalent_course.service import equivalent_course_service_optimized
+from app.domain.equivalent_course.service import equivalent_course_service
 
 
 router = APIRouter(
@@ -180,7 +180,7 @@ async def get_equivalent_course(course_code: str):
     """
     try:
         # 구 → 신
-        equiv = equivalent_course_service_optimized.get_equivalent_course(course_code)
+        equiv = equivalent_course_service.get_equivalent_course(course_code)
         
         # 신 → 구 (향후 변경)
         future_changes = curriculum_service._get_alternative_codes(course_code)

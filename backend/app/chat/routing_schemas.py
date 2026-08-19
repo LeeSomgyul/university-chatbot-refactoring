@@ -42,7 +42,7 @@ class GetCurriculum(BaseModel):
     # admission_year: 입학 년도
     admission_year: Optional[int] = Field(
         default=None,
-        description=""
+        description="질문에서 언급된 학번(입학년도). 예: '2024학번' -> 2024. 언급 없으면 비워둔다."
     )
     
 
@@ -66,7 +66,8 @@ class GetEquivalentCourse(BaseModel):
 
     # course_name: 과목 명 or 과목 코드
     course_name: str = Field(
-        description=""
+        description="질문에서 언급된 과목명 원문. 예: '시스템프로그래밍 바뀐거 있어?' -> '시스템프로그래밍'. "
+                    "과목코드가 언급된 경우 과목코드를 그대로 넣어도 된다. 예: 'CS0620 대신 뭐 들어?' -> 'CS0620'"
     )
 
 
