@@ -5,7 +5,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
-from app.domain.curriculum.service import curriculum_service_optimized as curriculum_service
+from app.domain.curriculum.service import curriculum_service as curriculum_service
 from app.models.schemas import UserProfile, CourseInput
 from app.domain.equivalent_course.service import equivalent_course_service
 

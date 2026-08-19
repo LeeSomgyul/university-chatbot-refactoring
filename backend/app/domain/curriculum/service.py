@@ -689,4 +689,4 @@ class CurriculumServiceOptimized:
 
 
 # 전역 서비스 (최적화 버전)
-curriculum_service_optimized = CurriculumServiceOptimized()
+curriculum_service = CurriculumServiceOptimized()

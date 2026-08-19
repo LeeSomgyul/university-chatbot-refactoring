@@ -54,7 +54,7 @@ class RoutingConnector:
                 print("⚠️ LLM이 함수를 선택하지 않음")
                 return RoutingResponse("SearchGeneral", {})
             
-            # 🚨 현재는 함수를 1개만 고를 수 있는것으로 작성
+            # 🚨 개선 예정: 현재는 함수를 1개만 고를 수 있는것으로 작성
             tool_call = llm_response.tool_calls[0]
             function_name = tool_call["name"]
             arguments = tool_call["args"]

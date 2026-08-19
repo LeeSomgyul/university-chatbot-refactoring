@@ -27,7 +27,7 @@ try:
     from app.models.session import session_store
     print("✅ session_store import 성공")
     
-    from app.services.chatbot import chatbot
+    from app.chat.dispatcher import chat as chat_dispatcher
     print("✅ chatbot import 성공")
     
     # 모든 라우터 import
@@ -196,7 +196,7 @@ async def chat(request: ChatRequest):
         print(f"  user_profile: {user_profile}")
         
         # 챗봇 호출
-        result = chatbot.chat(
+        result = chat_dispatcher(
             message=request.message,
             user_profile=user_profile,
             history=history_for_llm
@@ -216,7 +216,7 @@ async def chat(request: ChatRequest):
         return ChatResponse(
             message=result['message'],
             sources=result.get('sources', []),
-            query_type=result.get('query_type'),
+            matched_function=result.get('matched_function'),
             session_id=session_id
         )
     

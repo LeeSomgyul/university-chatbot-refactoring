@@ -78,7 +78,7 @@ class ChatResponse(BaseModel):
     """챗봇 응답"""
     message: str
     sources: List[Dict[str, Any]] = Field(default_factory=list)
-    query_type: Optional[str] = None  # "curriculum", "general", "hybrid"
+    matched_function: Optional[str] = None
     session_id: Optional[str] = None
 
 

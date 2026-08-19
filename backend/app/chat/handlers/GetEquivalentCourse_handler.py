@@ -21,6 +21,8 @@ from app.config import settings
 from app.database.supabase_client import supabase
 from app.domain.equivalent_course.service import equivalent_course_service
 
+_llm = None
+
 # [보조 메서드] course_code를 받아서 course_name으로 변환
 # 🚨임시 버전: 문제2(함수 다듬기) 해결할 때 정교하게 다듬기
 def _change_course_code(course_name_or_code: str) -> Optional[str]:
@@ -88,13 +90,8 @@ def _generate_natural_answer(facts: Dict[str, Any]) -> str:
 
 
 # [핸들러] 동일/대체 과목 조회
-def handle_equivalent_course(course_name_or_code: str) -> Dict[str, Any]:
-    """
-        Args:
-            course_name: LLM이 질문에서 추출한 과목명 또는 과목 코드
-        Returns:
-            응답 형식은 모든 응답이 동일하게 Dict 형식
-    """
+# course_name_or_code: LLM이 질문에서 추출한 과목명 또는 과목 코드
+def handle_equivalent_course_query(course_name_or_code: str) -> Dict[str, Any]:
     print(f"☑️ [핸들러 진입] 동일/대체 과목 조회: course_name 또는 code={course_name_or_code}")
 
     # 1. 과목명 -> 과목코드 변환
@@ -103,7 +100,7 @@ def handle_equivalent_course(course_name_or_code: str) -> Dict[str, Any]:
     if not course_code:
         return{
             "message": f"'{course_name_or_code}' 과목을 찾을 수 없어요. 😥 정확한 과목명이나 과목코드로 다시 질문해주시겠어요?",
-            "matched_function": "get_equivalent_course",
+            "matched_function": "handle_equivalent_course_query",
             "sources": [],
             "needs_profile": False
         }
@@ -115,7 +112,7 @@ def handle_equivalent_course(course_name_or_code: str) -> Dict[str, Any]:
     if history_course_info is None:
         return{
             "message": f"'{course_code}' 과목은 별도의 동일/대체 과목 변경 이력이 없어요. 😊",
-            "matched_function": "get_mapping_info",
+            "matched_function": "handle_equivalent_course_query",
             "sources": [],
             "needs_profile": False
         }
@@ -129,11 +126,11 @@ def handle_equivalent_course(course_name_or_code: str) -> Dict[str, Any]:
         change_history["중복 이수 가능 여부"] = "가능" if facts.get('allow_duplicate') else "불가능"
         change_history["재수강 가능 여부"] = "가능" if facts.get('allow_retake', True) else "불가능"
 
-    message = _generate_natural_answer(facts)
+    message = _generate_natural_answer(change_history)
 
     return{
         "message": message,
-        "matched_function": "get_equivalent_course",
+        "matched_function": "handle_equivalent_course_query",
         "sources": [{"table": "equivalent_courses", "course_code": course_code}],
         "needs_profile": False 
     }

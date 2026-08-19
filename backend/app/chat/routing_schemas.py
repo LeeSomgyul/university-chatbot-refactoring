@@ -6,7 +6,7 @@
 from typing import Optional
 from pydantic import BaseModel, Field
 
-# ====== [관계형DB: 졸업사정 확인] ======
+# ====== [관계형DB: 졸업사정 처리] ======
 class CheckGraduationStatus(BaseModel):
     """
     [설명]
