@@ -4,6 +4,8 @@ FastAPI 메인 애플리케이션 - 통합 버전
 import sys
 import traceback
 
+from app.api import graduation
+
 try:
     from fastapi import FastAPI, HTTPException
     from fastapi.middleware.cors import CORSMiddleware
@@ -25,20 +27,20 @@ try:
     from app.models.session import session_store
     print("✅ session_store import 성공")
     
-    from app.services.chatbot import chatbot
+    from app.chat.dispatcher import chat as chat_dispatcher
     print("✅ chatbot import 성공")
     
     # 모든 라우터 import
-    from app.routes import graduation, review_admin
+    from app.api import review_admin
     print("✅ graduation, review_admin import 성공")
     
-    from app.routers.autocomplete import router as autocomplete_router
+    from app.api.autocomplete import router as autocomplete_router
     print("✅ autocomplete import 성공")
     
-    from app.routers.calendar import router as calendar_router
+    from app.api.calendar import router as calendar_router
     print("✅ calendar import 성공")
     
-    from app.routers.faq import router as faq_router
+    from app.api.faq import router as faq_router
     print("✅ faq import 성공")
 
 except Exception as e:
@@ -194,7 +196,7 @@ async def chat(request: ChatRequest):
         print(f"  user_profile: {user_profile}")
         
         # 챗봇 호출
-        result = chatbot.chat(
+        result = chat_dispatcher(
             message=request.message,
             user_profile=user_profile,
             history=history_for_llm
@@ -214,7 +216,7 @@ async def chat(request: ChatRequest):
         return ChatResponse(
             message=result['message'],
             sources=result.get('sources', []),
-            query_type=result.get('query_type'),
+            matched_function=result.get('matched_function'),
             session_id=session_id
         )
     

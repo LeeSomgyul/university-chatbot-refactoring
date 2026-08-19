@@ -1,6 +1,4 @@
-"""
-동일대체교과목 서비스 - 최적화 버전
-"""
+
 from typing import Dict, List, Optional
 from app.database.supabase_client import supabase
 
@@ -122,7 +120,8 @@ class EquivalentCourseServiceOptimized:
         
         # 두 체인에 공통 코드가 있으면 동일/대체
         return bool(set(chain1) & set(chain2))
-    
+
+    # ⭕사용
     def get_equivalent_course(
         self, 
         course_code: str,
@@ -238,7 +237,9 @@ class EquivalentCourseServiceOptimized:
     def resolve_course_code(self, course_code: str) -> str:
         """과목 코드를 최신 코드로 변환"""
         return self.get_latest_course_code(course_code)
-    
+
+    # ⭕사용
+    # [함수] 과목이 바뀐적 있는지 확인
     def get_mapping_info(self, course_code: str) -> Optional[str]:
         """과목이 바뀌었는지 확인하고 정보 반환"""
         history = self.get_course_history(course_code)
@@ -265,7 +266,7 @@ class EquivalentCourseServiceOptimized:
 
 
 # 전역 서비스 (최적화 버전)
-equivalent_course_service_optimized = EquivalentCourseServiceOptimized()
+equivalent_course_service = EquivalentCourseServiceOptimized()
 
 # 앱 시작 시 자동 로드
-equivalent_course_service_optimized.load_all_equivalents()
+equivalent_course_service.load_all_equivalents()

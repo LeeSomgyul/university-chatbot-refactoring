@@ -1,5 +1,6 @@
 //챗봇 응답 DB 연동 서비스
 
+//🚨 챗봇 응답형식 바뀌엇기때문에 확인하기 (query_type제거 및 matched_function 추가)
 interface ChatbotResponse {
     message: string;                // 챗봇 응답 메시지
     sources?: string[];             // 참고 자료
