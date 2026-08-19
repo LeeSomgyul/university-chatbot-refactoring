@@ -1,6 +1,7 @@
-"""
-사용자 질문을 분류하는 라우터
-"""
+# ===============================================
+# 사용자의 질문이 들어왔을 때 라우터 처리 (curriculum/reviews/general)
+# ===============================================
+
 import re
 from typing import Literal
 from langchain_openai import ChatOpenAI

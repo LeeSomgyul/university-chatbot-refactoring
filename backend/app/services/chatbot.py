@@ -7,11 +7,10 @@ from langchain.prompts import ChatPromptTemplate
 from app.config import settings
 from app.models.schemas import UserProfile, ChatMessage
 from app.services.query_router import query_router
-from app.services.vector_service import get_vector_service
-#from app.services.curriculum_service import curriculum_service
-from app.services.curriculum_service_optimized import curriculum_service_optimized as curriculum_service
+from app.domain.vector_search.service import get_vector_service
+from app.domain.curriculum.service import curriculum_service_optimized as curriculum_service
 from app.services.entity_extractor import entity_extractor
-from app.services.review_service import get_review_service
+from app.domain.review.service import get_review_service
 
 class SchoolChatbot:
     """학교 챗봇 메인 클래스"""

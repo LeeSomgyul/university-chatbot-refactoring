@@ -4,6 +4,8 @@ FastAPI 메인 애플리케이션 - 통합 버전
 import sys
 import traceback
 
+from app.api import graduation
+
 try:
     from fastapi import FastAPI, HTTPException
     from fastapi.middleware.cors import CORSMiddleware
@@ -29,16 +31,16 @@ try:
     print("✅ chatbot import 성공")
     
     # 모든 라우터 import
-    from app.routes import graduation, review_admin
+    from app.api import review_admin
     print("✅ graduation, review_admin import 성공")
     
-    from app.routers.autocomplete import router as autocomplete_router
+    from app.api.autocomplete import router as autocomplete_router
     print("✅ autocomplete import 성공")
     
-    from app.routers.calendar import router as calendar_router
+    from app.api.calendar import router as calendar_router
     print("✅ calendar import 성공")
     
-    from app.routers.faq import router as faq_router
+    from app.api.faq import router as faq_router
     print("✅ faq import 성공")
 
 except Exception as e:
