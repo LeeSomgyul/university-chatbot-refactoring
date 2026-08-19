@@ -1,0 +1,30 @@
+no,질문,카테고리,정답_함수,홀드아웃,비고
+1,제가 몇 학점 더 들어야 졸업하나요?,A_curriculum,check_graduation_status,아니오,기본 케이스
+2,2024학번 전공필수 과목이 뭐예요?,A_curriculum,get_curriculum_requirements,아니오,기본 케이스
+3,저 지금까지 이수한 학점 알려줘,A_curriculum,check_graduation_status,아니오,기본 케이스
+4,창의교양 학점이 부족한데 뭘 더 들어야 하나요?,A_curriculum,check_graduation_status,아니오,overflow 규칙 관련 가능
+5,미이수 과목 조회해줘,A_curriculum,check_graduation_status,아니오,기본 케이스
+6,2025년 1학기 개강일이 언제예요?,B_general,search_general_info,아니오,academic_calendar.txt
+7,중앙도서관 몇 시까지 열어요?,B_general,search_general_info,아니오,library.txt
+8,장학금 신청 기간이 언제인가요?,B_general,search_general_info,아니오,scholarship.txt
+9,통학버스 시간표 알려줘,B_general,search_general_info,아니오,school_bus.txt
+10,인공지능 연구실 교수님이 누구예요?,B_general,search_general_info,예,laboratories.txt / 홀드아웃 통제군
+11,자료구조 강의평가 보여줘,C_review,search_reviews,아니오,기본 케이스
+12,김철수 교수님 강의 후기 있어요?,C_review,search_reviews,아니오,기본 케이스
+13,알고리즘 수업 어때요?,C_review,search_reviews,아니오,기본 케이스
+14,시스템프로그래밍 바뀐거 있어?,D_equivalent,get_equivalent_course_info,아니오,txt FAQ 예시와 동일 문구 (기존에도 될 가능성 낮음 - 하드코딩 규칙이 general로 강제하던 케이스)
+15,CS0620 컴퓨터네트워크 대신 뭐 들으면 돼?,D_equivalent,get_equivalent_course_info,아니오,과목코드+이름 혼합 질문
+16,확률과 통계 학점 인정되는 다른 과목 있나요?,D_equivalent,get_equivalent_course_info,아니오,txt에 없는 표현으로 패러프레이즈
+17,컴퓨터그래픽스 과목명 바뀐 거 맞아요? 요즘엔 뭐라고 불러요?,D_equivalent,get_equivalent_course_info,예,2025년 신규 매핑 - txt 미반영 가능성 높음 (일반화 테스트 핵심 케이스)
+18,패턴인식이랑 디지털이미징이랑 같은 과목인가요?,D_equivalent,get_equivalent_course_info,아니오,두 과목명을 동시에 언급하는 패턴
+19,기초설계 재수강해도 되나요 아니면 모바일프로그래밍으로 대체해야 하나요?,D_equivalent,get_equivalent_course_info,아니오,재수강+대체 혼합 질문
+20,이산수학 옛날 이름이 뭐였어요?,D_equivalent,get_equivalent_course_info,예,역방향 조회(신규→과거) - 홀드아웃
+21,데이터베이스설계및응용 과목 이수했는데 데이터베이스랑 중복으로 들어도 되나요?,D_equivalent,get_equivalent_course_info,아니오,2025년 신규 매핑 + allow_duplicate 조건 포함
+22,컴퓨터네트워크 들었는데 이거 졸업학점에 포함되나요 아니면 정보보호를 다시 들어야하나요?,E_ambiguous,get_equivalent_course_info,예,curriculum+동일대체 혼합. 핵심 의도는 대체 인정 여부이므로 동일대체 함수가 우선이라 판단. 홀드아웃
+23,임베디드시스템 학점이 몇 학점이고 임베디드프로그래밍이랑 같은 과목 맞나요?,E_ambiguous,get_equivalent_course_info,아니오,학점 조회+동일대체 혼합. 동일대체 여부가 핵심 질문이라 판단
+24,전공영어1이랑 2 중에 뭘 들어야 하나요?,E_ambiguous,get_curriculum_requirements,아니오,과목명이 비슷해 보이지만 동일대체가 아닌 순수 커리큘럼 질문 (함정 케이스)
+25,이번 학기에 뭘 들어야 졸업할 수 있어요?,E_ambiguous,check_graduation_status,아니오,동일대체 키워드 전혀 없는 순수 curriculum 대조군
+26,영상처리 관련해서 시험 언제예요?,E_ambiguous,search_general_info,아니오,과목명이 들어가지만 실제 의도는 학사일정(general). curriculum/동일대체로 오분류되기 쉬운 함정 케이스
+27,도서관 운영시간 바뀌었나요?,F_bugcase,search_general_info,아니오,'바뀌었'+'운영시간' 문자열 병합 버그 재현용
+28,이번 학기 운영시간표 바뀐 거 있어요?,F_bugcase,search_general_info,아니오,동일 버그 변형
+29,시스템프로그래밍 바뀐 거 알려줘,F_bugcase,get_equivalent_course_info,예,'바뀌다' 키워드가 동일대체 문맥에서 쓰인 경우 - general로 잘못 강제되면 안 됨. 홀드아웃
