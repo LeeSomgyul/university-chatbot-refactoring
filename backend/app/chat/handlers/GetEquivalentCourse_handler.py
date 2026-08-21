@@ -20,34 +20,13 @@ from langchain.prompts import ChatPromptTemplate
 from app.config import settings
 from app.database.supabase_client import supabase
 from app.domain.equivalent_course.service import equivalent_course_service
+from app.matching.ahocorasick_matching import find_exact_match
+from app.matching.course_code_choosing import choose_course_code
+
 
 _llm = None
 
-# [보조 메서드] course_code를 받아서 course_name으로 변환
-# 🚨임시 버전: 문제2(함수 다듬기) 해결할 때 정교하게 다듬기
-def _change_course_code(course_name_or_code: str) -> Optional[str]:
-    # 1. 이미 과목 코드 형식이라면 (예: CS0668) 그대로 사용
-    code_pattern = re.match(r'^[A-Za-z]{2}\d{4}$',course_name_or_code.strip())
-    if code_pattern:
-        return course_name_or_code.strip().upper()
-
-    # 2. curriculums 테이블에서 과목명(course_name)으로 과목코드(course_code) 조회
-    try:
-        result = supabase.table('curriculums') \
-            .select('course_code, course_name') \
-            .ilike('course_name', f'%{course_name_or_code.strip()}%') \
-            .limit(1) \
-            .execute()
-
-        if result.data:
-            return result.data[0]['course_code']
-        return None
-
-    except Exception as e:
-        print(f"❌ 과목명 -> 코드 변환 실패: {e}")
-        return None
-
-# [보조 메서드] LLM 가져오기
+# [보조 함수] LLM 가져오기
 def _get_llm() -> ChatOpenAI:
     global _llm
     if _llm is None:
@@ -59,7 +38,7 @@ def _get_llm() -> ChatOpenAI:
     return _llm
 
 
-# [보조 메서드] JSON 형식 -> LLM 자연어 처리
+# [보조 함수] JSON 형식 -> LLM 자연어 처리
 def _generate_natural_answer(facts: Dict[str, Any]) -> str:
     prompt = ChatPromptTemplate.from_messages([
         ("system", """당신은 순천대학교 컴퓨터공학과 안내 챗봇입니다.
@@ -87,28 +66,65 @@ def _generate_natural_answer(facts: Dict[str, Any]) -> str:
         print(f"⚠️ 자연어 답변 생성 실패, 사실 그대로 반환: {e}")
         return "\n".join(f"{k}: {v}" for k, v in facts.items())
 
+# [보조 함수] 과목명의 코드 선택이 애매한 경우 사용자에게 학번 질문 
+# 예) matched_name = "컴퓨터개론"
+# 예) candidates = {"course_code": "CS101", "admission_year": 2018}, ...
+def _build_ambiguous_message(matched_name: str, candidates: list) -> str:
+    years = sorted({str(c["admission_year"]) for c in candidates if c.get("admission_year")})
+    codes = sorted({c["course_code"] for c in candidates})
+
+    years_example = ", ".join(years) if years else "예: 2025"
+    codes_example = ", ".join(codes)
+
+    return f"""'{matched_name}'이라는 이름의 과목이 여러 개 있어서 정확히 어느 과목을 말씀하시는지 확인이 필요해요! 😊
+ 
+몇 학번이신가요? (예: {years_example})
+또는 정확한 과목코드를 알려주시면 더 빠르게 찾아드릴게요. (예: {codes_example})"""
 
 
-# [핸들러] 동일/대체 과목 조회
+# [메인 함수] 동일/대체 과목 조회
 # course_name_or_code: LLM이 질문에서 추출한 과목명 또는 과목 코드
 def handle_equivalent_course_query(course_name_or_code: str) -> Dict[str, Any]:
     print(f"☑️ [핸들러 진입] 동일/대체 과목 조회: course_name 또는 code={course_name_or_code}")
 
-    # 1. 과목명 -> 과목코드 변환
-    course_code = _change_course_code(course_name_or_code)
+    # 1. 앞뒤 공백 제거된 질문에서 추출한 과목명 또는 과목 코드
+    query = course_name_or_code.strip()
 
-    if not course_code:
-        return{
-            "message": f"'{course_name_or_code}' 과목을 찾을 수 없어요. 😥 정확한 과목명이나 과목코드로 다시 질문해주시겠어요?",
-            "matched_function": "handle_equivalent_course_query",
-            "sources": [],
-            "needs_profile": False
-        }
+    # 2. 과목명 -> 과목코드 변환
+    # 2-1. 이미 과목 코드 형식이라면 
+    if re.match(r'^[A-Za-z]{2}\d{4}$', query):
+        course_code = query.upper()
+        matched_name = None
+    else:
+        # 2-2. 과목 명 형식이라면 Aho-Corasick 알고리즘 실행
+        match = find_exact_match(query)
 
-    # 2. 과목이 바뀐적 있는지 확인
+        if match is None:
+            return{
+                "message": f"'{course_name_or_code}' 과목을 찾을 수 없어요. 😥 정확한 과목명이나 과목코드로 다시 질문해주시겠어요?",
+                "matched_function": "handle_equivalent_course_query",
+                "sources": [],
+                "needs_profile": False
+            }
+
+        # 2-3. 과목의 코드 선택
+        result = choose_course_code(match.course_codes)
+
+        if result.status == "ambiguous":
+            return{
+                "message": _build_ambiguous_message(match.matched_name, result.candidates),
+                "matched_function": "handle_equivalent_course_query",
+                "sources": [],
+                "needs_profile": True
+            }
+
+        course_code = result.course_code
+        matched_name = match.matched_name
+
+    # 3. 과목이 바뀐적 있는지 확인
     history_course_info = equivalent_course_service.get_mapping_info(course_code)
 
-    # 2-1. 과목이 바뀐적 없는 경우
+    # 3-1. 과목이 바뀐적 없는 경우
     if history_course_info is None:
         return{
             "message": f"'{course_code}' 과목은 별도의 동일/대체 과목 변경 이력이 없어요. 😊",
@@ -117,7 +133,7 @@ def handle_equivalent_course_query(course_name_or_code: str) -> Dict[str, Any]:
             "needs_profile": False
         }
 
-    # 2-2. 과목 정보가 바뀐적 있는 경우
+    # 3-2. 과목 정보가 바뀐적 있는 경우
     facts = equivalent_course_service.get_equivalent_course(course_code)
 
     change_history = {"변경 이력": history_course_info}

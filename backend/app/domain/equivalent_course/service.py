@@ -99,26 +99,25 @@ class EquivalentCourseServiceOptimized:
         
         # 역방향 체인을 앞에 추가
         return list(reversed(reverse_chain)) + chain
-    
+
+    # ⭕사용
+    # [두 과목 코드가 동일/대체 과목인지 판단]
+    # 예) CS0852의 체인: [CS0601, CS0852, CS0856]  (기초설계→모바일프로그래밍→모바일프로그래밍
+    # 예) CS0856의 체인: [CS0601, CS0852, CS0856]
+    # 예) 결과: CS0852와 CS0856가 같은 체인에 속하기 때문에 동일/대체 교과목이라고 판단
     def is_equivalent(self, code1: str, code2: str) -> bool:
-        """
-        두 과목 코드가 동일/대체 과목인지 확인 (메모리 기반 - DB 쿼리 0회!)
-        
-        Example:
-            is_equivalent("CS0116", "CS0863") → True
-        """
-        # 초기 로드 확인
+        # 1. 초기 로드 확인
         if not self._is_loaded:
             self.load_all_equivalents()
         
         if code1 == code2:
             return True
         
-        # 체인 조회 (메모리에서)
+        # 2. 체인 조회
         chain1 = self._course_chains.get(code1, [code1])
         chain2 = self._course_chains.get(code2, [code2])
         
-        # 두 체인에 공통 코드가 있으면 동일/대체
+        # 3. 두 체인에 공통 코드가 있으면 동일/대체
         return bool(set(chain1) & set(chain2))
 
     # ⭕사용
