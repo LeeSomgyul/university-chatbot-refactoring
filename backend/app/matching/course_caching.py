@@ -79,6 +79,7 @@ def get_course_list() -> List[Dict]:
     return _course_list_cache
 
 # 2. 실제 검색용 정규화 완료된 맵 데이터
+# 예: {"데이터베이스개론": ["CS101", "CS102"],"운영체제": ["CS201"]}
 def get_normalized_course_list() -> Dict[str, List[str]]:
     _load()
     return _normalized_course_list_cache

@@ -42,6 +42,7 @@ def _get_automaton():
     return _automaton
 
 # [메인 함수] Aho-Corasick 알고리즘 실행 파이프라인
+# text: 사용자의 질문 (정규화 완료)
 def find_exact_match(text: str) -> Optional[ExactMatch]:
     # 1. 사용자가 보낸 질문 정규화된 문장
     # (예: "나고급자료구조수업듣고싶어")
