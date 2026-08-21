@@ -47,7 +47,7 @@ def choose_course_code(course_code: List[str]) -> ResolveResult:
     # 2-3. 다른 체인이면 사용자에게 되묻기 (다른 학과인 경우 등)
     all_courses = get_course_list()
     candidates = [
-        {"course_code": c["course_code"], "admission_year": c.get("admission_year")}
+        {"course_code": c["course_code"], "effective_year": c.get("effective_year")}
         for c in all_courses
         if c["course_code"] in course_code
     ]

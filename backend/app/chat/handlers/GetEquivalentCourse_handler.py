@@ -1,24 +1,14 @@
 # ===============================================
 #      [핸들러] 관계형DB: 동일/대체 과목 조회
 # ===============================================
-"""
-    [역할]
-    routing_schemas.py의 GetEquivalentCourse로 사용자의 질문을 받아서
-    관계형 DB(equivalent_courses 테이블)를 조회한 뒤, 답변을 생성하여 반환
-
-    [응답 형식]
-    "message": 사용자에게 보내줄 최종 응답 문장
-    "matched_function": 어떤 함수가 실행되었는지
-    "sources": 벡터 검색이라면 어떤 문서를 확인하였는지
-    "needs_profile": 사용자 개인 데이터(학번, 이수과목 등)가 필요한지 여부
-"""
+# - 역할: routing_schemas.py의 GetEquivalentCourse로 사용자의 질문을 받아서
+# 관계형 DB(equivalent_courses 테이블)를 조회한 뒤, 답변을 생성하여 반환
 
 import re
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from langchain_openai import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
 from app.config import settings
-from app.database.supabase_client import supabase
 from app.domain.equivalent_course.service import equivalent_course_service
 from app.matching.ahocorasick_matching import find_exact_match
 from app.matching.course_code_choosing import choose_course_code
@@ -68,9 +58,9 @@ def _generate_natural_answer(facts: Dict[str, Any]) -> str:
 
 # [보조 함수] 과목명의 코드 선택이 애매한 경우 사용자에게 학번 질문 
 # 예) matched_name = "컴퓨터개론"
-# 예) candidates = {"course_code": "CS101", "admission_year": 2018}, ...
+# 예) candidates = {"course_code": "CS101", "effective_year": 2018}, ...
 def _build_ambiguous_message(matched_name: str, candidates: list) -> str:
-    years = sorted({str(c["admission_year"]) for c in candidates if c.get("admission_year")})
+    years = sorted({str(c["effective_year"]) for c in candidates if c.get("effective_year")})
     codes = sorted({c["course_code"] for c in candidates})
 
     years_example = ", ".join(years) if years else "예: 2025"
@@ -78,7 +68,7 @@ def _build_ambiguous_message(matched_name: str, candidates: list) -> str:
 
     return f"""'{matched_name}'이라는 이름의 과목이 여러 개 있어서 정확히 어느 과목을 말씀하시는지 확인이 필요해요! 😊
  
-몇 학번이신가요? (예: {years_example})
+몇 년도 기준으로 알고 계신 과목명인가요? (예: {years_example})
 또는 정확한 과목코드를 알려주시면 더 빠르게 찾아드릴게요. (예: {codes_example})"""
 
 
@@ -94,7 +84,6 @@ def handle_equivalent_course_query(course_name_or_code: str) -> Dict[str, Any]:
     # 2-1. 이미 과목 코드 형식이라면 
     if re.match(r'^[A-Za-z]{2}\d{4}$', query):
         course_code = query.upper()
-        matched_name = None
     else:
         # 2-2. 과목 명 형식이라면 Aho-Corasick 알고리즘 실행
         match = find_exact_match(query)
@@ -119,7 +108,6 @@ def handle_equivalent_course_query(course_name_or_code: str) -> Dict[str, Any]:
             }
 
         course_code = result.course_code
-        matched_name = match.matched_name
 
     # 3. 과목이 바뀐적 있는지 확인
     history_course_info = equivalent_course_service.get_mapping_info(course_code)
