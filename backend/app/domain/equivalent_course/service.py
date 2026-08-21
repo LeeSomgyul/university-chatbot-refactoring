@@ -179,11 +179,10 @@ class EquivalentCourseServiceOptimized:
             if i == 0:
                 # 3-1. 시작 과목 (체인의 맨 앞)
                 equiv = self._equivalents_cache.get(code)
-                name = equiv[""] if equiv else "알 수 없음"
+                name = equiv['old_course_name'] if equiv else "알 수 없음"
                 history.append({
                     "code": code,
-                    #💻 여기부터 수정 필요
-                    "name": course_info['name'] if course_info else "알 수 없음",
+                    "name": name,
                     "mapping_type": None
                 })
             else:
@@ -217,20 +216,6 @@ class EquivalentCourseServiceOptimized:
         
         return " → ".join(parts)
     
-    def _get_course_info(self, course_code: str) -> Optional[Dict]:
-        """curriculums 테이블에서 과목 정보 조회 (캐싱 가능)"""
-        try:
-            result = supabase.table('curriculums')\
-                .select('course_name')\
-                .eq('course_code', course_code)\
-                .limit(1)\
-                .execute()
-            
-            if result.data and len(result.data) > 0:
-                return {"name": result.data[0]['course_name']}
-            return None
-        except:
-            return None
     
     def resolve_course_code(self, course_code: str) -> str:
         """과목 코드를 최신 코드로 변환"""
