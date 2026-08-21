@@ -12,6 +12,7 @@ from app.config import settings
 from app.domain.equivalent_course.service import equivalent_course_service
 from app.matching.ahocorasick_matching import find_exact_match
 from app.matching.course_code_choosing import choose_course_code
+from app.matching.morpheme_analyzing import extract_nouns
 
 
 _llm = None
@@ -87,6 +88,12 @@ def handle_equivalent_course_query(course_name_or_code: str) -> Dict[str, Any]:
     else:
         # 2-2. 과목 명 형식이라면 Aho-Corasick 알고리즘 실행
         match = find_exact_match(query)
+
+        if match is None:
+            # 2-3. Aho-Corasick 알고리즘 실패하면 형태소분석 실행 후 다시 Aho-Corasick 알고리즘 실행
+            nouns_only = extract_nouns(query)
+            if nouns_only != query:
+                match = find_exact_match(nouns_only)
 
         if match is None:
             return{

@@ -16,3 +16,6 @@ openpyxl==3.1.5
 python-dotenv==1.0.1
 redis==5.2.0
 pyahocorasick==2.3.1
+kiwipiepy==0.23.2
+kiwipiepy_model==0.23.0
+RapidFuzz==3.14.5
