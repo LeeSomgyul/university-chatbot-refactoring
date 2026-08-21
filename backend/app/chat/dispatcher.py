@@ -41,7 +41,8 @@ def chat(
     
     if decision.function_name == "GetEquivalentCourse":
         return GetEquivalentCourse_handler.handle_equivalent_course_query(
-            course_name_or_code=decision.arguments["course_name"]
+            course_name_or_code=decision.arguments["course_name"],
+            message = message
         )
         
     if decision.function_name == "SearchReviews":

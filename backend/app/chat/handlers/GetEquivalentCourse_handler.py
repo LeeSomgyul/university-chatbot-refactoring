@@ -14,7 +14,8 @@ from app.matching.ahocorasick_matching import find_exact_match
 from app.matching.course_code_choosing import choose_course_code
 from app.matching.morpheme_analyzing import extract_nouns
 from app.matching.normalize import normalize
-from app.matching.fuzzy_matching import find_fuzzy_match
+from app.matching.fuzzy_matching import find_fuzzy_match, FuzzLLMCandidate
+from app.matching.llm_matching import find_llm_match
 
 
 _llm = None
@@ -74,11 +75,23 @@ def _build_ambiguous_message(matched_name: str, candidates: list) -> str:
 몇 년도 기준으로 알고 계신 과목명인가요? (예: {years_example})
 또는 정확한 과목코드를 알려주시면 더 빠르게 찾아드릴게요. (예: {codes_example})"""
 
+# [보조 함수] LLM이 추측한 결과를 1개 보여주면서 사용자에게 정확한 과목명 또는 과목코드 질문
+def _build_llm_suggestion_message(llm_result: FuzzLLMCandidate) -> str:
+    codes = ", ".join(sorted(set(llm_result.course_codes)))
+    
+    return f"""정확히 어떤 과목을 말씀하시는지 확신이 서지 않지만, 혹시 '{llm_result.matched_name}'(과목코드: {codes})을 찾으시는 건가요? 🤔
+ 
+맞다면 정확한 과목명이나 과목코드로 다시 한번 질문해주시겠어요?
+아니라면 조금 더 구체적으로 과목명을 알려주시면 정확히 찾아드릴게요!"""
+
 
 # [메인 함수] 동일/대체 과목 조회
 # course_name_or_code: LLM이 질문에서 추출한 과목명 또는 과목 코드
-def handle_equivalent_course_query(course_name_or_code: str) -> Dict[str, Any]:
+def handle_equivalent_course_query(course_name_or_code: str, message: str = None) -> Dict[str, Any]:
     print(f"☑️ [핸들러 진입] 동일/대체 과목 조회: course_name 또는 code={course_name_or_code}")
+    
+    if message is None:
+        message = course_name_or_code
 
     # 1. 앞뒤 공백 제거된 질문에서 추출한 과목명 또는 과목 코드
     query = normalize(course_name_or_code.strip()) 
@@ -102,6 +115,17 @@ def handle_equivalent_course_query(course_name_or_code: str) -> Dict[str, Any]:
             fuzzy_result = find_fuzzy_match(query)
             if fuzzy_result:
                 match = fuzzy_result
+                
+        # 2-5. Fuzzy Matching 알고리즘도 실패하면 LLM으로 질문
+        if match is None:
+            llm_result = find_llm_match(message)
+            if llm_result:
+                return{
+                    "message": _build_llm_suggestion_message(llm_result),
+                    "matched_function": "handle_equivalent_course_query",
+                    "sources": [],
+                    "needs_profile": False
+                }
 
         if match is None:
             return{
