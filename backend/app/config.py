@@ -56,3 +56,4 @@ def get_settings() -> Settings:
 
 # 전역 설정 객체
 settings = get_settings()
+
