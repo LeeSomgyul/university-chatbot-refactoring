@@ -217,7 +217,8 @@ async def chat(request: ChatRequest):
             message=result['message'],
             sources=result.get('sources', []),
             matched_function=result.get('matched_function'),
-            session_id=session_id
+            session_id=session_id,
+            restaurants=result.get('restaurants')
         )
     
     except Exception as e:

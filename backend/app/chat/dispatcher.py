@@ -12,6 +12,7 @@ from app.chat.handlers import (
     GetEquivalentCourse_handler,
     SearchReviews_handler,
     SearchGeneral_handler,
+    SearchRestaurant_handler,
 )
 
 # message: 사용자의 질문 문장
@@ -48,7 +49,13 @@ def chat(
         return SearchReviews_handler.handle_search_reviews_query(
             message=message, history=history
         )
-        
+
+    if decision.function_name == "SearchRestaurant":
+        return SearchRestaurant_handler.handle_search_restaurant_query(
+            location_keyword=decision.arguments.get("location_keyword"),
+            food_keyword=decision.arguments.get("food_keyword"),
+        )
+
     return SearchGeneral_handler.handle_search_general_query(
         message=message, history=history
     )

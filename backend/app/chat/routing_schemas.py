@@ -105,6 +105,27 @@ class SearchGeneral(BaseModel):
     """
     pass
 
+# ======= [카카오맵 REST API 호출] 식도락 검색 ======
+class SearchRestaurant(BaseModel):
+    """
+    [설명]
+    - 학교 근처 음식점, 카페, 맛집 추천 요청 처리
+
+    [예시 질문]
+    - 정문 근처 떡볶이 맛집 추천해줘
+    - 맛집 추천해줘
+    - 순천대 근처 카페 알려줘
+
+    [참고]
+    - 위치나 음식 종류가 언급 안 될 수도 있음 (그럴 땐 null로 둔다)
+    """
+    location_keyword: Optional[str] = Field(
+        None, description="사용자가 언급한 구체적 위치. 정문, 후문, 학생회관 등. 언급 없으면 null"
+    )
+    food_keyword: Optional[str] = Field(
+        None, description="사용자가 언급한 구체적 음식명이나 카테고리. 떡볶이, 분식, 중식 등. 언급 없으면 null"
+    )
+
 
 # ====== [LLM 에게 전달할 전체 함수 목록] ======
 FUNCTIONS = [
@@ -113,6 +134,7 @@ FUNCTIONS = [
     GetEquivalentCourse,
     SearchReviews,
     SearchGeneral,
+    SearchRestaurant,
 ]
 
 # 다른 파일에서 함수 쓸 수 있도록 "키:값" 형식으로 변경
