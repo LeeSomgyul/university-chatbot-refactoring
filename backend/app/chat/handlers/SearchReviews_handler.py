@@ -3,6 +3,7 @@
 # ===============================================
 
 from typing import Dict, Any, List
+from langchain_core.messages import BaseMessage, HumanMessage
 from app.config import settings
 from app.domain.review.service import get_review_service
 
@@ -16,7 +17,7 @@ def _get_rs():
     return _review_service
 
 
-def handle_search_reviews_query(message: str, history: List = None) -> Dict[str, Any]:
+def handle_search_reviews_query(message: str, history: List[BaseMessage] = None) -> Dict[str, Any]:
     """강의평가 질문 처리"""
     if history is None:
         history = []
@@ -43,13 +44,13 @@ def handle_search_reviews_query(message: str, history: List = None) -> Dict[str,
         print("  → 다른 평 요청 감지")
         if history:
             for msg in reversed(history[-5:]):
-                if msg['role'] == 'user' and '후기' in msg['content']:
-                    extracted = review_service.extract_professor_and_course(msg['content'])
+                if isinstance(msg, HumanMessage) and '후기' in msg.content:
+                    extracted = review_service.extract_professor_and_course(msg.content)
                     professor = extracted.get('professor')
                     course = extracted.get('course')
                     if professor or course:
                         search_results = review_service.search_reviews(
-                            query=msg['content'], k=10,
+                            query=msg.content, k=10,
                             professor_filter=professor, course_filter=course
                         )
                         if search_results:
@@ -74,13 +75,13 @@ def handle_search_reviews_query(message: str, history: List = None) -> Dict[str,
         print("  → 상세 후기 요청 감지")
         if history:
             for msg in reversed(history[-5:]):
-                if msg['role'] == 'user' and '후기' in msg['content']:
-                    extracted = review_service.extract_professor_and_course(msg['content'])
+                if isinstance(msg, HumanMessage) and '후기' in msg.content:
+                    extracted = review_service.extract_professor_and_course(msg.content)
                     professor = extracted.get('professor')
                     course = extracted.get('course')
                     if professor or course:
                         search_results = review_service.search_reviews(
-                            query=msg['content'], k=10,
+                            query=msg.content, k=10,
                             professor_filter=professor, course_filter=course
                         )
                         if search_results:

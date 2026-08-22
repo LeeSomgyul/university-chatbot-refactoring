@@ -10,14 +10,10 @@ from app.domain.curriculum.service import curriculum_service
 
 # message: 사용자의 질문 원본
 # user_profile: 사용자 개인 정보 (학번, 이수과목 등)
-# history: 이전 질문 기억
 def handle_check_graduation_status_query(
     message: str,
-    user_profile: Optional[UserProfile] = None,
-    history: List = None    
+    user_profile: Optional[UserProfile] = None  
 ) -> Dict[str, Any]:
-    if history is None:
-        history = []
         
     extracted = entity_extractor.extract_course_info(message)
     

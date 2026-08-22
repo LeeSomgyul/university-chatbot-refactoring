@@ -4,7 +4,8 @@
 
 from typing import Dict, Any, List
 from langchain_openai import ChatOpenAI
-from langchain.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 from app.config import settings
 from app.domain.vector_search.service import get_vector_service
 
@@ -30,9 +31,8 @@ def _get_vs():
         _vector_service = get_vector_service()
     return _vector_service
 
-
-def handle_search_general_query(message: str, history: List = None) -> Dict[str, Any]:
-    """일반 정보 질문 처리 (벡터 검색)"""
+# [일반 정보 질문 처리 (벡터 검색)]
+def handle_search_general_query(message: str, history: List[BaseMessage] = None) -> Dict[str, Any]:
     if history is None:
         history = []
 
@@ -42,8 +42,8 @@ def handle_search_general_query(message: str, history: List = None) -> Dict[str,
         try:
             history_text = ""
             for msg in history[-4:]:
-                role = "학생" if msg["role"] == "user" else "챗봇"
-                history_text += f"{role}: {msg['content']}\n"
+                role = "학생" if isinstance(msg, HumanMessage) else "챗봇"
+                history_text += f"{role}: {msg.content}\n"
 
             rewrite_prompt = ChatPromptTemplate.from_messages([
                 ("system", """당신은 검색 쿼리를 개선하는 전문가입니다.
@@ -123,10 +123,10 @@ def handle_search_general_query(message: str, history: List = None) -> Dict[str,
 """)
     ]
     for msg in history:
-        if msg["role"] == "user":
-            messages.append(("user", msg["content"]))
-        elif msg["role"] == "assistant":
-            messages.append(("assistant", msg["content"]))
+        if isinstance(msg, HumanMessage):
+            messages.append(("user", msg.content))
+        elif isinstance(msg, AIMessage):
+            messages.append(("assistant", msg.content))
     messages.append(("user", message))
 
     prompt = ChatPromptTemplate.from_messages(messages)

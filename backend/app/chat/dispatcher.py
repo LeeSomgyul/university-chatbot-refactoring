@@ -31,7 +31,7 @@ def chat(
     # 2. 함수 판단에 따라서 실제 핸들러랑 연결
     if decision.function_name == "CheckGraduationStatus":
         return CheckGraduationStatus_handler.handle_check_graduation_status_query(
-            message=message, user_profile=user_profile, history=history
+            message=message, user_profile=user_profile
         )
         
     if decision.function_name == "GetCurriculum":
