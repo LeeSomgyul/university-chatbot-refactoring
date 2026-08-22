@@ -58,7 +58,6 @@ def agent_node(state: AgentState) -> dict:
     
     # 4. 판단 결과 (응답1 or 응답2)
     return {"message": [llm_response]}
-    
 
 # [메인 함수] 실행 노드
 # - 역할: 판단 노드에서 도구를 더 불러야 한다면, 해당 도구(함수)를 실행하는 노드
