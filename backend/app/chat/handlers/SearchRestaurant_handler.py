@@ -14,7 +14,7 @@
     "needs_profile": 사용자 개인 데이터가 필요한지 여부
 """
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 from kiwipiepy import Kiwi
 
@@ -32,8 +32,8 @@ kiwi.add_user_word("순천대", "NNP")
 def _extract_location_keyword(user_message: str)->Optional[str]:
     # DB 위치 키워드 목록 조회
     try:
-        result = supabase.table('location_keywords').select('keyword').execute()
-        db_keywords = {row['keyword'] for row in result.data}
+        result = supabase.table('location_keywords').select('keyword,priority').execute()
+        keyword_priority = {row['keyword']: row['priority'] for row in result.data}
     except Exception as e:
         print(f"위치 키워드 목록 조회 실패: {e}")
         return None
@@ -41,11 +41,14 @@ def _extract_location_keyword(user_message: str)->Optional[str]:
     tokens = kiwi.analyze(user_message)[0][0]
     nouns = {t.form for t in tokens if t.tag in ('NNG','NNP')}
 
-    # db 매칭
-    for kw in nouns:
-        if kw in db_keywords:
-            return kw
-    return None
+    candidates = [kw for kw in nouns if kw in keyword_priority]
+
+    if not candidates:
+        return None
+
+    # 우선순위(작은 숫자)가 가장 높은 걸 선택. 동점이면 이름순으로 결정론적 tie-break
+    best = min(candidates, key=lambda kw: (keyword_priority[kw], kw))
+    return best
 
 
 # [보조 메서드] 위치 키워드 -> 위경도 변환
@@ -70,14 +73,27 @@ def _resolve_location(location_keyword: Optional[str]) -> Dict[str, Any]:
     # 기본값이 db에 존재하지 않는다면
     return {"latitude": None, "longitude": None, "used_default": True}
 
+# 카카오맵 응답 답변 구조 생성
+def _format_place(place: dict) -> dict:
+    return {
+            "name": place.get('place_name'),
+            "address": place.get('road_address_name') or place.get('address_name'),
+            "url": place.get('place_url'),
+            "phone": place.get('phone'),
+            "category": place.get('category_name','').split('>')[-1].strip(),
+        }
+
 def handle_search_restaurant_query(
         # LLM이 뽑아준 원본 값(참고용/폴백)
         location_keyword: Optional[str] = None,
         # LLM이 뽑아준 값 그대로 사용
-        food_keyword: Optional[str] = None,
+        food_keyword: Optional[List[str]] = None,
+        # 음식키워드 복수 조사 -or/and
+        combine_mode: Optional[str] = None,
         # 원본 사용자 질문
         message: str = ""
 )-> Dict[str,Any]:
+    # =========1.위치 추출=============
     # 위치는 kiwi로 우선 추출
     kiwi_location = _extract_location_keyword(message)
     # Kiwi 우선, 안 되면 LLM 값 폴백
@@ -102,62 +118,101 @@ def handle_search_restaurant_query(
             "needs_profile": False
         }
 
-    # 카카오맵 검색(음식 키워드 있음,없음에 따라 분기)
+    # =========2. 음식키워드별 카카오맵 검색=============
     """
         음식 키워드가 있는 경우:
             음식명(예: "떡볶이")으로 키워드 검색
         음식 키워드가 없는 경우:
             좌표 기반으로 "음식점 전체"(FD6) 카테고리 검색
     """
-    if food_keyword:
-        results = kakao_map_client.search_by_keyword(
-            food_keyword,
-            latitude=location["latitude"],
-            longitude=location["longitude"],
-        )
+    # 음식 키워드 없음
+    if not food_keyword:
+        results_by_food = {
+            "전체": kakao_map_client.search_by_category(
+                latitude=location["latitude"], longitude=location["longitude"], category_code="FD6"
+            )
+        }
+    # 음식 키워드 단일
+    elif len(food_keyword) == 1:
+        results_by_food = {
+            food_keyword[0]: kakao_map_client.search_by_keyword(
+                food_keyword[0],
+                latitude=location["latitude"],
+                longitude=location["longitude"],
+            )
+        }
+    # 음식 키워드가 2개 이상 -> 각각 검색
     else:
-        results = kakao_map_client.search_by_category(
-            latitude=location["latitude"],
-            longitude=location["longitude"],
-            category_code="FD6"
-        )
+        results_by_food = {
+            kw: kakao_map_client.search_by_keyword(
+                kw, latitude=location["latitude"], longitude=location["longitude"]
+            )
+            for kw in food_keyword
+        }
 
-    # 검색결과가 없는 경우
-    if not results:
+    # 음식 키워드 안내 문구 준비
+    if not food_keyword:
+        food_note = ""
+    elif len(food_keyword) == 1:
+        food_note = f"{food_keyword[0]} "
+    else:
+        food_note = f"{'와 '.join(food_keyword)} "
+
+    # 기본위치 안내문구 준비
+    if location["used_default"]:
+        response_message = f"순천대 본부 기준으로 {food_note}맛집을 찾아드렸어요! 📍"
+    elif final_location_keyword:
+        response_message = f"{final_location_keyword} 근처 {food_note}맛집을 찾아드렸어요! 😊"
+    else:
+        response_message = f"근처 {food_note}맛집을 찾아드렸어요! 😊"
+
+    # =========3.or인지 and인지 판단==========
+    use_or = combine_mode == "or" or (food_keyword and len(food_keyword) > 1 and combine_mode != "and")
+
+    # or분기 : 섹션별로 응답 생성
+    if use_or:
+        sections = []
+        has_any_result = False
+        for kw, results in results_by_food.items():
+            top3 = results[:3] if results else []
+            if top3:
+                has_any_result = True
+            sections.append({
+                "keyword": kw,
+                "restaurants": [_format_place(p) for p in top3]
+            })
+        if not has_any_result:
+            return {
+                "message": "근처에서 해당 유형의 장소를 찾을 수 없습니다. 😥",
+                "matched_function": "handle_search_restaurant_query",
+                "sources": [],
+                "needs_profile": False
+            }
         return {
-            "message": "근처에서 해당 유형의 장소를 찾을 수 없습니다. 😥",
+            "message": response_message,
+            "sections": sections,
             "matched_function": "handle_search_restaurant_query",
             "sources": [],
             "needs_profile": False
         }
-
-    # 결과 3개 자르기
-    top3 = results[:3]
-
-    # 기본위치 안내문구 준비
-    if location["used_default"]:
-        response_message = "순천대 본부 기준으로 찾아드렸어요! 📍"
-    elif final_location_keyword:
-        response_message = f"{final_location_keyword} 근처 맛집을 찾아드렸어요! 😊"
+    # # and이거나 단일 키워드: 기존처럼 통합 응답
     else:
-        response_message = "근처 맛집을 찾아드렸어요! 😊"
-
-    # 결과 3개를 딕셔너리 리스트로 변환
-    restaurants = []
-    for place in top3:
-        restaurants.append({
-            "name": place.get('place_name'),
-            "address": place.get('road_address_name') or place.get('address_name'),
-            "url": place.get('place_url'),
-            "phone": place.get('phone'),
-            "category": place.get('category_name','').split('>')[-1].strip(),
-        })
-
-    # 최종 응답
-    return {
-        "message": response_message,
-        "restaurants": restaurants,
-        "matched_function": "handle_search_restaurant_query",
-        "sources": [],
-        "needs_profile": False
-    }
+        all_results = [r for results in results_by_food.values() for r in results]
+        top3 = all_results[:3]
+        if not top3:
+            return {
+                "message": "근처에서 해당 유형의 장소를 찾을 수 없습니다. 😥",
+                "matched_function": "handle_search_restaurant_query",
+                "sources": [],
+                "needs_profile": False
+            }
+        label = "/".join(results_by_food.keys())
+        return {
+            "message": response_message,
+            "sections": [
+                {"keyword": label, "restaurants": [_format_place(p) for p in top3]}
+            ],
+            "matched_function": "handle_search_restaurant_query",
+            "sources": [],
+            "needs_profile": False
+        }

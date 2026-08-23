@@ -4,10 +4,15 @@ interface ChatbotResponse {
     sources?: string[];             // 참고 자료
     matched_function?: string;      // 매칭 함수
     session_id: string;             // 세션 ID
-    restaurants?: {                 // 식도락
-        name: string;
-        address: string;
-        url: string;
+    sections?: {                 // 식도락
+        keyword: string;
+        restaurants: {
+            name: string;
+            address: string;
+            url: string;
+            phone: string;
+            category: string;
+        }[];
     }[];
 }
 

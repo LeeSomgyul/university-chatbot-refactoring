@@ -80,7 +80,7 @@ class ChatResponse(BaseModel):
     sources: List[Dict[str, Any]] = Field(default_factory=list)
     matched_function: Optional[str] = None
     session_id: Optional[str] = None
-    restaurants: Optional[List[Dict[str, Any]]] = None
+    sections: Optional[List[dict]] = None
 
 
 class HealthCheck(BaseModel):

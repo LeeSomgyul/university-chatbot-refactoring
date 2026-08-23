@@ -3,7 +3,7 @@
 # ===============================================
 # - routing_connector.py로 사용자 질문이 들어왔을 때 아래 라우터(클래스)들 중
 #   적합한 클래스로 접근
-from typing import Optional
+from typing import Optional, Literal, List
 
 from pydantic import BaseModel, Field
 
@@ -123,11 +123,17 @@ class SearchRestaurant(BaseModel):
     location_keyword: Optional[str] = Field(
         None, description="사용자가 언급한 구체적 위치. 정문, 후문, 학생회관 등. 언급 없으면 null"
     )
-    food_keyword: Optional[str] = Field(
-        None, description="사용자가 언급한 구체적 음식명이나 카테고리. 떡볶이, 분식, 중식 등. 언급 없으면 null"
+    food_keyword: Optional[List[str]] = Field(
+        None,
+        description=(
+            "사용자가 언급한 음식 종류를 전부 리스트로 추출하세요. "
+            "예: '떡볶이나 마라탕' → ['떡볶이', '마라탕']. "
+            "'분식이나 중식' → ['분식', '중식']. "
+            "절대 하나만 골라서 넣지 마세요."
+        )
     )
-    message: str = Field(
-        None, description="사용자의 원본 메시지"
+    combine_mode: Optional[Literal["or", "and"]] = Field(
+        None, description="음식이 2개 이상일 때, '나'처럼 선택 의미면 'or', '랑'처럼 둘 다 의미면 'and'"
     )
 
 

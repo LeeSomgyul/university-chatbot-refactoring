@@ -10,7 +10,7 @@ interface RestaurantCardsProps {
     restaurants: Restaurant[];
 }
 
-export const RestaurantCards = ({ restaurants }: RestaurantCardsProps) => {
+export const RestaurantCards = ({ restaurants  }: RestaurantCardsProps) => {
     if (!restaurants || restaurants.length === 0) return null
 
     return (
