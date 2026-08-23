@@ -2,7 +2,7 @@
 카카오맵 API 클라이언트
 """
 import requests
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 from app.config import settings
 
@@ -56,10 +56,21 @@ class KakaoMapClient:
             return []
 
     # (음식 키워드 있는 경우)키워드로 검색
-    def search_by_keyword(self, query: str) -> List[Dict]:
+    def search_by_keyword(
+            self,
+            query: str,
+            latitude: Optional[float] = None,
+            longitude: Optional[float] = None,
+            radius: int = 1000
+    ) -> List[Dict]:
         url = "https://dapi.kakao.com/v2/local/search/keyword.json"
         # 카카오맵 API가 요구하는 파라미터 형식
         params = {"query": query}
+
+        if latitude and longitude:
+            params["y"] = latitude
+            params["x"] = longitude
+            params["radius"] = radius
 
         try:
             response = requests.get(

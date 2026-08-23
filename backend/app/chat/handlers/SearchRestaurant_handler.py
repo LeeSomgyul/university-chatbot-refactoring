@@ -68,7 +68,11 @@ def handle_search_restaurant_query(
             좌표 기반으로 "음식점 전체"(FD6) 카테고리 검색
     """
     if food_keyword:
-        results = kakao_map_client.search_by_keyword(food_keyword)
+        results = kakao_map_client.search_by_keyword(
+            food_keyword,
+            latitude=location["latitude"],
+            longitude=location["longitude"],
+        )
     else:
         results = kakao_map_client.search_by_category(
             latitude=location["latitude"],
