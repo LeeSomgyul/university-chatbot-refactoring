@@ -30,6 +30,6 @@ graph.add_conditional_edges(
 # 5. 도구 실행이 끝나면 무조건 다시 판단 노드로 복귀
 graph.add_edge("tools", "agent")
 
-# 6. 반복 끝나면 흐름을 최종 조립
+# 6. 외부 사용을 위한 조립 
 agent_graph = graph.compile()
 

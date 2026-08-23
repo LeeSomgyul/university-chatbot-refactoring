@@ -196,30 +196,28 @@ async def chat(request: ChatRequest):
         print(f"  user_profile: {user_profile}")
         
         # 챗봇 호출
-        result = chat_dispatcher(
+        agent_result = ChatRequest(
             message=request.message,
+            session_id=session_id,
             user_profile=user_profile,
             history=history_for_llm
         )
         
-        if isinstance(result, dict) and 'user_profile' in result and result['user_profile']:
-            session_store.update_profile(session_id, result['user_profile'])
-            print(f"  ✅ 세션에 프로필 저장: {result['user_profile'].admission_year}학번")
+        response = chat_dispatcher(agent_result)
+        
+        if response.user_profile:
+            session_store.update_profile(session_id, response.user_profile)
+            print(f"  ✅ 세션에 프로필 저장: {response.user_profile.admission_year}학번")
         
         # 세션에 메시지 저장
         session_store.add_message(session_id, {
             "role": "assistant",
-            "content": result['message'],
+            "content": response.message,
             "timestamp": datetime.now()
         })
         
-        return ChatResponse(
-            message=result['message'],
-            sources=result.get('sources', []),
-            matched_function=result.get('matched_function'),
-            session_id=session_id,
-            restaurants=result.get('restaurants')
-        )
+        response.session_id = session_id
+        return response
     
     except Exception as e:
         print(f"❌ 챗봇 오류: {e}")

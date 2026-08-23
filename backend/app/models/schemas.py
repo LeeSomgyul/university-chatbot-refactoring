@@ -58,7 +58,7 @@ class UserProfile(BaseModel):
 
 # [채팅 메시지]
 class ChatMessage(BaseModel):
-    role: str  # "user" or "assistant"
+    role: str  # "user"(사용자) or "assistant"(챗봇)
     content: str
     timestamp: Optional[datetime] = None
     
@@ -86,6 +86,7 @@ class ChatResponse(BaseModel):
     message: str
     sources: List[Dict[str, Any]] = Field(default_factory=list)
     matched_function: Optional[str] = None
+    user_profile: Optional[UserProfile] = None
     session_id: Optional[str] = None
     restaurants: Optional[List[Dict[str, Any]]] = None
     
