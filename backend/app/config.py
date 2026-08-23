@@ -47,7 +47,8 @@ class Settings(BaseSettings):
         env_file = ".env"
         case_sensitive = False
 
-
+    #식도락
+    kakao_map_rest_key: str
 @lru_cache()
 def get_settings() -> Settings:
     """설정 싱글톤 인스턴스 반환"""
@@ -56,3 +57,4 @@ def get_settings() -> Settings:
 
 # 전역 설정 객체
 settings = get_settings()
+

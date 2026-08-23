@@ -1,11 +1,14 @@
 //챗봇 응답 DB 연동 서비스
-
-//🚨 챗봇 응답형식 바뀌엇기때문에 확인하기 (query_type제거 및 matched_function 추가)
 interface ChatbotResponse {
     message: string;                // 챗봇 응답 메시지
     sources?: string[];             // 참고 자료
-    query_type?: string;            // 쿼리 타입
+    matched_function?: string;      // 매칭 함수
     session_id: string;             // 세션 ID
+    restaurants?: {                 // 식도락
+        name: string;
+        address: string;
+        url: string;
+    }[];
 }
 
 interface ChatbotRequest {
@@ -29,7 +32,7 @@ interface UserContext {
  */
 export class ChatbotService {
     private static readonly API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-    
+
     /**
      * 사용자 메시지에 대한 챗봇 응답
      * @param message 사용자 메시지
@@ -37,7 +40,7 @@ export class ChatbotService {
      * @returns 챗봇 응답
      */
     static async getChatbotResponse(
-        message: string, 
+        message: string,
         context?: UserContext
     ): Promise<string> {
         try {
@@ -59,17 +62,17 @@ export class ChatbotService {
             }
 
             const result: ChatbotResponse = await response.json();
-            
+
             // 세션 ID를 컨텍스트에 저장 (다음 요청에 사용)
             if (context && result.session_id) {
                 context.sessionId = result.session_id;
             }
 
             return result.message;
-            
+
         } catch (error) {
             console.error('챗봇 API 호출 중 오류:', error);
-            
+
             // 에러 발생 시 기본 응답 반환
             return this.getFallbackResponse(message);
         }
@@ -82,7 +85,7 @@ export class ChatbotService {
      * @returns 상세 챗봇 응답
      */
     static async getDetailedChatbotResponse(
-        message: string, 
+        message: string,
         context?: UserContext
     ): Promise<ChatbotResponse> {
         try {
@@ -104,12 +107,12 @@ export class ChatbotService {
             }
 
             const result: ChatbotResponse = await response.json();
-            
+
             return result;
-            
+
         } catch (error) {
             console.error('상세 챗봇 API 호출 중 오류:', error);
-            
+
             // 에러 발생 시 기본 응답 반환
             return {
                 message: this.getFallbackResponse(message),
@@ -137,7 +140,7 @@ export class ChatbotService {
 
             const result = await response.json();
             return result.session_id;
-            
+
         } catch (error) {
             console.error('세션 생성 중 오류:', error);
             // 임시 세션 ID 생성
@@ -152,7 +155,7 @@ export class ChatbotService {
      */
     private static getFallbackResponse(message: string): string {
         const lowerMessage = message.toLowerCase();
-        
+
         // 대학 관련 키워드 기반 기본 응답
         if (lowerMessage.includes('졸업') || lowerMessage.includes('학점')) {
             return '졸업 요건에 대한 질문이시군요. 현재 서비스 연결에 문제가 있습니다. 잠시 후 다시 시도해주세요.';
@@ -171,8 +174,8 @@ export class ChatbotService {
      * 대화 기록 저장 (선택사항)
      */
     static async saveChatHistory(sessionId: string): Promise<void> {
-    console.log('Chat history saved to session:', sessionId);
-}
+        console.log('Chat history saved to session:', sessionId);
+    }
 }
 
 export const createChatbotResponseFetcher = (sessionId: string, userId?: string) => {
@@ -181,11 +184,11 @@ export const createChatbotResponseFetcher = (sessionId: string, userId?: string)
             sessionId,
             userId
         };
-        
+
         const response = await ChatbotService.getChatbotResponse(message, context);
-        
+
         // 대화기록은 백엔드에서 자동 저장
-        
+
         return response;
     };
 };
