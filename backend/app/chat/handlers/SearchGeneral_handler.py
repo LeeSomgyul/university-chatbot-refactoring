@@ -8,6 +8,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 from app.config import settings
 from app.domain.vector_search.service import get_vector_service
+from app.models.schemas import HandlerResponse
 
 _llm = None
 _vector_service = None
@@ -32,7 +33,7 @@ def _get_vs():
     return _vector_service
 
 # [일반 정보 질문 처리 (벡터 검색)]
-def handle_search_general_query(message: str, history: List[BaseMessage] = None) -> Dict[str, Any]:
+def handle_search_general_query(message: str, history: List[BaseMessage] = None) -> HandlerResponse:
     if history is None:
         history = []
 
@@ -96,12 +97,10 @@ def handle_search_general_query(message: str, history: List[BaseMessage] = None)
     search_results = vector_service.search(search_query, k=5)
 
     if not search_results:
-        return {
-            "message": "죄송해요, 관련 정보를 찾을 수 없어요. 다른 질문을 해주시겠어요? 🤔",
-            "matched_function": "handle_search_general_query",
-            "sources": [],
-            "needs_profile": False
-        }
+        return HandlerResponse(
+            message="죄송해요, 관련 정보를 찾을 수 없어요. 다른 질문을 해주시겠어요? 🤔",
+            matched_function="handle_search_general_query"
+        )
 
     context = vector_service.format_search_results(search_results)
 
@@ -145,9 +144,8 @@ def handle_search_general_query(message: str, history: List[BaseMessage] = None)
         else:
             answer = "죄송해요, 답변 생성 중 오류가 발생했어요. 다시 시도해주세요. 😅"
 
-    return {
-        "message": answer,
-        "matched_function": "handle_search_general_query",
-        "sources": search_results,
-        "needs_profile": False
-    }
+    return HandlerResponse(
+        message=answer,
+        matched_function="handle_search_general_query",
+        sources=search_results
+    )

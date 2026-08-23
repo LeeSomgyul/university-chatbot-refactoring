@@ -16,6 +16,7 @@ from app.matching.morpheme_analyzing import extract_nouns
 from app.matching.normalize import normalize
 from app.matching.fuzzy_matching import find_fuzzy_match, FuzzLLMCandidate
 from app.matching.llm_matching import find_llm_match
+from app.models.schemas import HandlerResponse
 
 
 _llm = None
@@ -87,7 +88,7 @@ def _build_llm_suggestion_message(llm_result: FuzzLLMCandidate) -> str:
 
 # [메인 함수] 동일/대체 과목 조회
 # course_name_or_code: LLM이 질문에서 추출한 과목명 또는 과목 코드
-def handle_equivalent_course_query(course_name_or_code: str, message: str = None) -> Dict[str, Any]:
+def handle_equivalent_course_query(course_name_or_code: str, message: str = None) -> HandlerResponse:
     print(f"☑️ [핸들러 진입] 동일/대체 과목 조회: course_name 또는 code={course_name_or_code}")
     
     if message is None:
@@ -120,31 +121,26 @@ def handle_equivalent_course_query(course_name_or_code: str, message: str = None
         if match is None:
             llm_result = find_llm_match(message)
             if llm_result:
-                return{
-                    "message": _build_llm_suggestion_message(llm_result),
-                    "matched_function": "handle_equivalent_course_query",
-                    "sources": [],
-                    "needs_profile": False
-                }
+                return HandlerResponse(
+                    message=_build_llm_suggestion_message(llm_result),
+                    matched_function="handle_equivalent_course_query"
+                )
 
         if match is None:
-            return{
-                "message": f"'{course_name_or_code}' 과목을 찾을 수 없어요. 😥 정확한 과목명이나 과목코드로 다시 질문해주시겠어요?",
-                "matched_function": "handle_equivalent_course_query",
-                "sources": [],
-                "needs_profile": False
-            }
+            return HandlerResponse(
+                message=f"'{course_name_or_code}' 과목을 찾을 수 없어요. 😥 정확한 과목명이나 과목코드로 다시 질문해주시겠어요?",
+                matched_function="handle_equivalent_course_query"
+            )
 
         # 2-3. 과목의 코드 선택
         result = choose_course_code(match.course_codes)
 
         if result.status == "ambiguous":
-            return{
-                "message": _build_ambiguous_message(match.matched_name, result.candidates),
-                "matched_function": "handle_equivalent_course_query",
-                "sources": [],
-                "needs_profile": True
-            }
+            return HandlerResponse(
+                message=_build_ambiguous_message(match.matched_name, result.candidates),
+                matched_function="handle_equivalent_course_query",
+                needs_profile=True
+            )
 
         course_code = result.course_code
 
@@ -153,12 +149,10 @@ def handle_equivalent_course_query(course_name_or_code: str, message: str = None
 
     # 3-1. 과목이 바뀐적 없는 경우
     if history_course_info is None:
-        return{
-            "message": f"'{course_code}' 과목은 별도의 동일/대체 과목 변경 이력이 없어요. 😊",
-            "matched_function": "handle_equivalent_course_query",
-            "sources": [],
-            "needs_profile": False
-        }
+        return HandlerResponse(
+            message=f"'{course_code}' 과목은 별도의 동일/대체 과목 변경 이력이 없어요. 😊",
+            matched_function="handle_equivalent_course_query"
+        )
 
     # 3-2. 과목 정보가 바뀐적 있는 경우
     facts = equivalent_course_service.get_equivalent_course(course_code)
@@ -171,9 +165,8 @@ def handle_equivalent_course_query(course_name_or_code: str, message: str = None
 
     message = _generate_natural_answer(change_history)
 
-    return{
-        "message": message,
-        "matched_function": "handle_equivalent_course_query",
-        "sources": [{"table": "equivalent_courses", "course_code": course_code}],
-        "needs_profile": False 
-    }
+    return HandlerResponse(
+        message=message,
+        matched_function="handle_equivalent_course_query",
+        sources=[{"table": "equivalent_courses", "course_code": course_code}]
+    )

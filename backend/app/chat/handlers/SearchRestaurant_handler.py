@@ -18,6 +18,7 @@ from typing import Dict, Any, Optional
 
 from app.database.supabase_client import supabase
 from app.domain.restaurant.kakao_map_client import kakao_map_client
+from app.models.schemas import HandlerResponse
 
 DEFAULT_LOCATION_KEYWORD = "순천대"
 
@@ -47,18 +48,16 @@ def _resolve_location(location_keyword: Optional[str]) -> Dict[str, Any]:
 def handle_search_restaurant_query(
         location_keyword: Optional[str] = None,
         food_keyword: Optional[str] = None
-)-> Dict[str,Any]:
+)-> HandlerResponse:
     # 위치 호출
     location = _resolve_location(location_keyword)
 
     # 위치 기본값도 매칭 못했다면
     if location["latitude"] is None:
-        return{
-            "message": "위치 정보를 찾을 수 없어요. 다시 시도해주세요. 😥",
-            "matched_function": "handle_search_restaurant_query",
-            "sources": [],
-            "needs_profile": False
-        }
+        return HandlerResponse(
+            message="위치 정보를 찾을 수 없어요. 다시 시도해주세요. 😥",
+            matched_function="handle_search_restaurant_query"
+        )
 
     # 카카오맵 검색(음식 키워드 있음,없음에 따라 분기)
     """
@@ -78,12 +77,10 @@ def handle_search_restaurant_query(
 
     # 검색결과가 없는 경우
     if not results:
-        return {
-            "message": "근처에서 해당 유형의 장소를 찾을 수 없습니다. 😥",
-            "matched_function": "handle_search_restaurant_query",
-            "sources": [],
-            "needs_profile": False
-        }
+        return HandlerResponse(
+            message="근처에서 해당 유형의 장소를 찾을 수 없습니다. 😥",
+            matched_function="handle_search_restaurant_query"
+        )
 
     # 결과 3개 자르기
     top3 = results[:3]
@@ -108,10 +105,8 @@ def handle_search_restaurant_query(
         })
 
     # 최종 응답
-    return {
-        "message": message,
-        "restaurants": restaurants,
-        "matched_function": "handle_search_restaurant_query",
-        "sources": [],
-        "needs_profile": False
-    }
+    return HandlerResponse(
+        message=message,
+        restaurants=restaurants,
+        matched_function="handle_search_restaurant_query"
+    )

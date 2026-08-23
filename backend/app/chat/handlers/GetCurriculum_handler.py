@@ -5,19 +5,20 @@
 from typing import Dict, Any, Optional
 from app.services.entity_extractor import entity_extractor
 from app.database.supabase_client import supabase
+from app.models.schemas import HandlerResponse
 
 
 def handle_curriculum_query(
     message: str,
     admission_year: Optional[int] = None
-) -> Dict[str, Any]:
+) -> HandlerResponse:
     if admission_year is None:
         extracted = entity_extractor.extract_course_info(message)
         admission_year = extracted.get('admission_year')
 
     if admission_year is None:
-        return {
-            "message": """교육과정 정보를 알려드리려면 입학년도가 필요해요! 😊
+        return HandlerResponse(
+            message="""교육과정 정보를 알려드리려면 입학년도가 필요해요! 😊
 
 몇 학번이신가요?
 
@@ -25,18 +26,17 @@ def handle_curriculum_query(
 "2024학번 전공필수 뭐야?"
 "25학번 교양 필수 알려줘"
 """,
-            "matched_function": "handle_curriculum_query",
-            "sources": [],
-            "needs_profile": True
-        }
+            matched_function="handle_curriculum_query",
+            needs_profile=True
+        )
 
     req_info = _extract_requirement_type(message)
 
     if req_info['type']:
         return _handle_requirement_list_query(admission_year, req_info['area'], req_info['type'])
 
-    return {
-        "message": f"""{admission_year}학번 어떤 과목 정보를 알려드릴까요? 😊
+    return HandlerResponse(
+        message=f"""{admission_year}학번 어떤 과목 정보를 알려드릴까요? 😊
 
 1️⃣ 전공필수 - 꼭 들어야 하는 전공 과목
 2️⃣ 전공선택 - 선택할 수 있는 전공 과목
@@ -46,10 +46,8 @@ def handle_curriculum_query(
 "{admission_year}학번 전공필수 뭐야?"
 "{admission_year}학번 교양 필수 알려줘"
 """,
-        "matched_function": "handle_curriculum_query",
-        "sources": [],
-        "needs_profile": False
-    }
+        matched_function="handle_curriculum_query"
+    )
 
 
 # ===== 내부 유틸리티 =====
@@ -58,7 +56,7 @@ def _handle_requirement_list_query(
     admission_year: int,
     course_area: str,
     requirement_type: str
-) -> Dict[str, Any]:
+) -> HandlerResponse:
     """요건별 전체 과목 리스트 반환"""
     try:
         result = supabase.table('curriculums') \
@@ -86,7 +84,10 @@ def _handle_requirement_list_query(
             else:
                 message += f"{admission_year}학번 {course_area} 정보를 찾을 수 없어요."
 
-            return {"message": message, "matched_function": "handle_curriculum_query", "sources": [], "needs_profile": False}
+            return HandlerResponse(
+                message=message,
+                matched_function="handle_curriculum_query"
+            )
 
         seen = set()
         unique_courses = []
@@ -123,18 +124,19 @@ def _handle_requirement_list_query(
         else:
             answer += f"\n💡 총 {total_courses}개 과목, {total_credits}학점 모두 이수해야 해요!"
 
-        return {"message": answer, "matched_function": "handle_curriculum_query", "sources": [], "needs_profile": False}
+        return HandlerResponse(
+            message=answer,
+            matched_function="handle_curriculum_query"
+        )
 
     except Exception as e:
         print(f"❌ 요건 조회 실패: {e}")
         import traceback
         traceback.print_exc()
-        return {
-            "message": "죄송해요, 과목 정보를 가져오는 중 오류가 발생했어요. 😥",
-            "matched_function": "handle_curriculum_query",
-            "sources": [],
-            "needs_profile": False
-        }
+        return HandlerResponse(
+            message="죄송해요, 과목 정보를 가져오는 중 오류가 발생했어요. 😥",
+            matched_function="handle_curriculum_query"
+        )
 
 
 def _extract_requirement_type(message: str) -> Dict[str, str]:

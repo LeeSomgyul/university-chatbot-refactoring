@@ -5,14 +5,17 @@
 from typing import List, Annotated, Optional
 from app.chat.agent.state import AgentState
 from langchain_core.tools import tool
-from langchain_core.messages import BaseMessage
+from langchain_core.messages import BaseMessage, ToolMessage
+from langchain_core.tools import InjectedToolCallId
 from langgraph.prebuilt import InjectedState
+from langgraph.types import Command
 from app.chat.handlers import (
     CheckGraduationStatus_handler,
     GetCurriculum_handler,
     GetEquivalentCourse_handler,
     SearchReviews_handler,
-    SearchGeneral_handler
+    SearchGeneral_handler,
+    SearchRestaurant_handler
 )
 
 # [관리 상속] 상태에 누적 저장되는 답변 데이터 DTO
@@ -27,12 +30,15 @@ def _get_history(state: AgentState) -> List[BaseMessage]:
 
 # 1. 개인 맞춤 졸업사정 처리
 # message: LLM이 의도를 파악해 놓은 사용자의 질문
-# state: 내부의 user_profile 사용 (LLM이 자동으로 못 넣고 백엔드에서 직접 넣어줘야 하는 값)
+# state(읽기전용): 이전 답변을 통해 state에 저장되어 있는 user_profile 꺼내오는 역할
+# tool_call_id: LLM이 도구(함수) 선택할 때 번호표도 같이 전달 (함수 이름 말고 번호로 함수 작업 끝났는지 확인함)
+# Command(쓰기전용): 새롭게 얻은 정보를 state에 업데이트 하는 역할 
 @tool
 def check_graduation_status(
     message: str,
-    state: Annotated[AgentState, InjectedState] 
-) -> str:
+    state: Annotated[AgentState, InjectedState],
+    tool_call_id: Annotated[str, InjectedToolCallId]
+) -> Command:
     """
     개인 맞춤 졸업사정 - 사용자가 지금까지 이수한 과목을 바탕으로
     졸업 가능 여부, 남은 학점, 미이수 과목을 계산할 때 사용한다.
@@ -42,11 +48,24 @@ def check_graduation_status(
     - "남은 학점이 뭐야?"
     - "2024학번이고 컴퓨터과학, 이산수학 들었어. 몇 학점 남았어?"
     """
+    
+    # 1. 도구(함수) 실행 후 결과 
     result = CheckGraduationStatus_handler.handle_check_graduation_status_query(
         message=message,
         user_profile=state.get("user_profile")
     )
-    return result["message"]
+    
+    # 2. state에 message 및 user_profile 업데이트 
+    update = {
+        "message": [
+            ToolMessage(content=result.message, tool_call_id=tool_call_id)
+        ]
+    }
+    
+    if result.user_profile is not None:
+        update["user_profile"] = result.user_profile
+    
+    return Command(update=update)
 
 # 2. 교육과정 조회
 # message: LLM이 의도를 파악해 놓은 사용자의 질문
@@ -68,7 +87,7 @@ def get_curriculum(
         message=message,
         admission_year=admission_year
     )
-    return result["message"]
+    return result.message
 
 # 3. 동일/대체 과목 조회
 # message: LLM이 의도를 파악해 놓은 사용자의 질문
@@ -91,7 +110,7 @@ def get_equivalent_course(
         message=message,
         course_name_or_code=course_name_or_code
     )
-    return result["message"]
+    return result.message
 
 # 4. 강의평가 검색
 # message: LLM이 의도를 파악해 놓은 사용자의 질문
@@ -112,7 +131,7 @@ def search_reviews(
         message=message,
         history=_get_history(state)
     )
-    return result["message"]
+    return result.message
 
 # 5. 일반 정보 검색
 # message: LLM이 의도를 파악해 놓은 사용자의 질문
@@ -134,7 +153,45 @@ def search_general(
         message=message,
         history=_get_history(state)
     )
-    return result["message"]
+    return result.message
+
+# 6. 식도락 검색 
+@tool(response_format="content_and_artifact")
+def search_restaurant(
+    location_keyword: Optional[str] = None,
+    food_keyword: Optional[str] = None
+):
+    """
+    학교 근처 음식점, 카페, 맛집 추천 요청을 처리한다. (카카오맵 실시간 검색)
+
+    이 함수를 사용해야 하는 질문 예시:
+    - "정문 근처 떡볶이 맛집 추천해줘"
+    - "맛집 추천해줘"
+    - "순천대 근처 카페 알려줘"
+
+    위치나 음식 종류가 언급 안 될 수도 있다 (그럴 땐 인자를 비워둔다).
+    """
+    result = SearchRestaurant_handler.handle_search_restaurant_query(
+        location_keyword=location_keyword,
+        food_keyword=food_keyword
+    )
+
+    message = result.message
+    restaurants = result.restaurants or []
+
+    if not restaurants:
+        return message, []
+
+    formatted = [message, ""]
+    for r in restaurants:
+        line = f"- {r.get('name')} ({r.get('category', '')}) | 주소: {r.get('address', '정보없음')}"
+        if r.get('phone'):
+            line += f" | 전화: {r['phone']}"
+        formatted.append(line)
+
+    content = "\n".join(formatted)
+    return content, restaurants
+
 
 # [함수 묶기] LLM(에이전트)이 아래 세트에서 골라서 자동으로 함수 사용
 AGENT_TOOLS = [
@@ -142,5 +199,6 @@ AGENT_TOOLS = [
     get_curriculum,
     get_equivalent_course,
     search_reviews,
-    search_general
+    search_general,
+    search_restaurant,
 ]
