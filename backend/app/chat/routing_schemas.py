@@ -4,6 +4,7 @@
 # - routing_connector.py로 사용자 질문이 들어왔을 때 아래 라우터(클래스)들 중
 #   적합한 클래스로 접근
 from typing import Optional
+
 from pydantic import BaseModel, Field
 
 # ====== [관계형DB: 졸업사정 처리] ======
@@ -124,6 +125,9 @@ class SearchRestaurant(BaseModel):
     )
     food_keyword: Optional[str] = Field(
         None, description="사용자가 언급한 구체적 음식명이나 카테고리. 떡볶이, 분식, 중식 등. 언급 없으면 null"
+    )
+    message: str = Field(
+        None, description="사용자의 원본 메시지"
     )
 
 

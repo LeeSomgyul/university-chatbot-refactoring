@@ -54,6 +54,7 @@ def chat(
         return SearchRestaurant_handler.handle_search_restaurant_query(
             location_keyword=decision.arguments.get("location_keyword"),
             food_keyword=decision.arguments.get("food_keyword"),
+            message=message
         )
 
     return SearchGeneral_handler.handle_search_general_query(
