@@ -3,20 +3,10 @@
 # ===============================================
 # 역할: routing_connector.py의 route() 함수를 실행하여 사용자 질문에 대해 함수 분기 처리
 
-from typing import Dict, Any, Optional, List
+from typing import List
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
-from app.models.schemas import UserProfile, ChatMessage
-from app.chat.routing_connector import routing_connector
 from app.models.schemas import ChatRequest, ChatResponse
 from app.chat.agent.graph_assemble import agent_graph
-from app.chat.handlers import (
-    CheckGraduationStatus_handler,
-    GetCurriculum_handler,
-    GetEquivalentCourse_handler,
-    SearchReviews_handler,
-    SearchGeneral_handler,
-    SearchRestaurant_handler,
-)
 
 
 # [보조 함수]
