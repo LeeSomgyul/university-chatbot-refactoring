@@ -6,14 +6,13 @@ from app.database.supabase_client import supabase
 from app.models.schemas import RestaurantReviewCreate
 from app.utils.embedding import get_embedding_model
 from fastapi import APIRouter,BackgroundTasks
-from starlette import background
 
 router = APIRouter(
     prefix="/api/restaurant",
     tags=["restaurant"]
 )
 
-@router.post("/reivew/create")
+@router.post("/review/create")
 async def create_restaurant_review(review: RestaurantReviewCreate, background_tasks: BackgroundTasks):
     if not review.content.strip():
         raise HTTPException(status_code=400, detail="리뷰 내용을 입력해주세요")

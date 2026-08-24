@@ -13,6 +13,7 @@ import { ChatbotService } from '../service/chatbotService';
 import React from 'react';
 import { FAQChild } from '../service/faqServices';
 import { RestaurantCards } from './RestaurantCards';
+import { RestaurantReviewForm } from './RestaurantReviewForm';
 
 
 
@@ -484,6 +485,25 @@ const ChatInterface = ({ messages, setMessages }: ChatInterfaceProps) => {
         }
     };
 
+    //기능 16: 식도락 리뷰 기능
+    const handleRestaurantCreateReview =  (restaurant: { name: string; url: string }) => {
+        console.log("=========")
+        const currentTime = getCurrentTime();
+        setMessages([...messages, {
+                sender: '봇',
+                text: (
+                    <RestaurantReviewForm
+                        restaurant={restaurant}
+                        onSubmitted={()=>{
+
+                        }}
+                    />
+                ),
+                time: currentTime,
+                type: 'regular' as const,
+            }]);
+    }
+
     return (
         <div className='chat-interface'>
             <div className={`chat-container ${messages.length > 0 ? 'chat-active' : 'chat-empty'}`}>
@@ -590,7 +610,10 @@ const ChatInterface = ({ messages, setMessages }: ChatInterfaceProps) => {
                                                                 {section.keyword}
                                                             </div>
                                                         )}
-                                                        <RestaurantCards restaurants={section.restaurants} />
+                                                        <RestaurantCards 
+                                                        restaurants={section.restaurants}
+                                                        onWriteReview={handleRestaurantCreateReview}
+                                                        />
                                                     </div>
                                                 ))}
                                             </div>
