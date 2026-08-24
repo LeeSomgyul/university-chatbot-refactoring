@@ -4,6 +4,7 @@ interface Restaurant {
     url: string;
     phone: string;
     category: string;
+    review_snippet?: string | null;
 }
 
 interface RestaurantCardsProps {
@@ -43,6 +44,11 @@ export const RestaurantCards = ({ restaurants, onWriteReview  }: RestaurantCards
                             <div className="text-xs text-gray-500 mt-0.5 truncate">
                                 {r.phone}
                             </div>
+                            {r.review_snippet && (
+                                <div>
+                                    {r.review_snippet}
+                                </div>
+                            )}
                             <div className="text-xs font-semibold text-gray-500 mt-1">
                                 자세히 보기 →
                             </div>

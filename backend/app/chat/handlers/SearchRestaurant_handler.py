@@ -18,6 +18,7 @@ import re
 
 from typing import Dict, Any, Optional, List
 
+from app.utils.embedding import get_embedding_model
 from kiwipiepy import Kiwi
 
 from app.database.supabase_client import supabase
@@ -30,6 +31,36 @@ kiwi = Kiwi()
 # 순천대 캠퍼스 내 위치는 유한하므로 사용자 사전에 등록
 kiwi.add_user_word("정문","NNP")
 kiwi.add_user_word("순천대", "NNP")
+
+# [보조 메서드] 카카오맵 결과에 벡터 검색으로 찾은 리뷰 스니펫을 붙임
+# 인자 : 카카오맵 API의 원본 가게 데이터(딕셔너리), 식도락 검색이 어떤 맥락에서 이뤄지는지(선택값)
+def _attach_review_snippet(place: dict, search_context: str= "") -> dict:
+    # 카카오맵 원본 데이터 저장
+    formatted = _format_place(place)
+    place_url = place.get('place_url')
+    if not place_url:
+        formatted['review_snippet'] = None
+        return formatted
+
+    try:
+        # 임베딩 모델 호출
+        model = get_embedding_model()
+        # 벡터검색 질문 텍스트 지정
+        query_text = search_context or place.get('place_name', '')
+        query_embedding = model.encode(query_text).tolist()
+        # 벡터(숫자 배열)로 변환
+        result = supabase.rpc('match_reviews_by_place', {
+            'query_embedding': query_embedding,
+            'target_place_url': place_url,
+            'match_count': 1
+        }).execute()
+        # query_embedding과 유사하면서(벡터 검색) place_url이 일치하는 리뷰 1개 저장
+        formatted['review_snippet'] = result.data[0]['content'] if result.data else None
+    except Exception as e:
+        print(f"[REVIEW_SNIPPET] {place_url} 리뷰 조회 실패: {e}")
+        formatted['review_snippet'] = None
+    # 카카오맵 원본데이터 + 리뷰
+    return formatted
 
 # [보조 메서드] Kiwi로 원본 문장에서 location_keywords와 매칭되는 위치 추출
 def _extract_location_keyword(user_message: str)->Optional[str]:
@@ -237,7 +268,7 @@ def handle_search_restaurant_query(
                 has_any_result = True
             sections.append({
                 "keyword": kw,
-                "restaurants": [_format_place(p) for p in top3]
+                "restaurants": [_attach_review_snippet(p) for p in top3]
             })
         if not has_any_result:
             return HandlerResponse(
@@ -262,7 +293,7 @@ def handle_search_restaurant_query(
         return HandlerResponse(
             message= response_message,
             sections= [
-                {"keyword": label,"restaurants": [_format_place(p) for p in top3]}
+                {"keyword": label,"restaurants": [_attach_review_snippet(p) for p in top3]}
             ],
             matched_function= "handle_search_restaurant_query",
         )
