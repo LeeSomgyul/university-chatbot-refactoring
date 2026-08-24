@@ -8,6 +8,7 @@ from langchain_core.messages import SystemMessage
 from langgraph.prebuilt import ToolNode
 from app.chat.agent.state import AgentState
 from app.chat.agent.tools import AGENT_TOOLS
+from app.chat.agent.state import UpdateAgentState
 
 _llm_with_tools = None
 
@@ -46,7 +47,7 @@ def _get_llm_with_tools() -> ChatOpenAI:
 # - 역할: 도구(함수=AGENT_TOOLS)를 더 불러야 하나, 이제 답할 수 있나를 LLM에게 생각하도록 한 뒤 판단하도록 하는 노드
 # - 응답1: 도구를 더 호출해야 한다고 판단하면 -> tool_calls가 채워진 AIMessage 생성
 # - 응답2: 이제 답할 수 있다고 판단하면 -> tool_calls가 없는 최종 답변 내용을 담은 AIMessage 생성
-def agent_node(state: AgentState) -> dict:
+def agent_node(state: AgentState) -> UpdateAgentState:
     # 1. LLM 1회 빌드 및 도구(함수) 가져오기
     llm_wiht_tools = _get_llm_with_tools()
     
@@ -57,7 +58,7 @@ def agent_node(state: AgentState) -> dict:
     llm_response = llm_wiht_tools.invoke(message)
     
     # 4. 판단 결과 (응답1 or 응답2)
-    return {"message": [llm_response]}
+    return UpdateAgentState(messages=[llm_response])
 
 # [메인 함수] 실행 노드
 # - 역할: 판단 노드에서 도구를 더 불러야 한다면, 해당 도구(함수)를 실행하는 노드

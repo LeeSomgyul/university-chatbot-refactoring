@@ -9,6 +9,7 @@ from langchain_core.messages import BaseMessage, ToolMessage
 from langchain_core.tools import InjectedToolCallId
 from langgraph.prebuilt import InjectedState
 from langgraph.types import Command
+from app.chat.agent.state import UpdateAgentState
 from app.chat.handlers import (
     CheckGraduationStatus_handler,
     GetCurriculum_handler,
@@ -56,8 +57,8 @@ def check_graduation_status(
     )
     
     # 2. state에 message 및 user_profile 업데이트 
-    update = {
-        "message": [
+    update: UpdateAgentState = {
+        "messages": [
             ToolMessage(content=result.message, tool_call_id=tool_call_id)
         ]
     }
