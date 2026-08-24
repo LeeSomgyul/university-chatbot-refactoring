@@ -159,10 +159,10 @@ def search_general(
 # 6. 식도락 검색 
 @tool(response_format="content_and_artifact")
 def search_restaurant(
+    message: str,
     location_keyword: Optional[str] = None,
     food_keyword: Optional[List[str]] = None,
     combine_mode: Optional[str] = None,
-    message: str= ''
 ):
     """
     학교 근처 음식점, 카페, 맛집 추천 요청을 처리한다. (카카오맵 실시간 검색)
@@ -190,19 +190,12 @@ def search_restaurant(
 
     message = result.message
     restaurants = result.sections or []
+    sections = result.sections or []
 
     if not restaurants:
         return message, []
 
-    formatted = [message, ""]
-    for r in restaurants:
-        line = f"- {r.get('name')} ({r.get('category', '')}) | 주소: {r.get('address', '정보없음')}"
-        if r.get('phone'):
-            line += f" | 전화: {r['phone']}"
-        formatted.append(line)
-
-    content = "\n".join(formatted)
-    return content, restaurants
+    return message, sections
 
 
 # [함수 묶기] LLM(에이전트)이 아래 세트에서 골라서 자동으로 함수 사용

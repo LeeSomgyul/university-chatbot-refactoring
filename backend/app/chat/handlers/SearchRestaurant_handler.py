@@ -44,7 +44,11 @@ def _extract_location_keyword(user_message: str)->Optional[str]:
     tokens = kiwi.analyze(user_message)[0][0]
     nouns = {t.form for t in tokens if t.tag in ('NNG','NNP')}
 
+    print(f"[LOCATION_DEBUG] Kiwi가 뽑은 명사: {nouns}")
+    print(f"[LOCATION_DEBUG] DB 키워드 목록: {list(keyword_priority.keys())}")
+
     candidates = [kw for kw in nouns if kw in keyword_priority]
+    print(f"[LOCATION_DEBUG] 후보(교집합): {candidates}")
 
     if not candidates:
         return None
