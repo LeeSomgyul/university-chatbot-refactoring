@@ -1,13 +1,12 @@
-"""
-API 요청/응답 스키마 정의 - 개선 버전
-"""
+# ===============================================
+# API 요청/응답 (DTO 모음)
+# ===============================================
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
-
+# [사용자가 입력한 수강 과목]
 class CourseInput(BaseModel):
-    """사용자가 입력한 수강 과목"""
     course_code: Optional[str] = None
     course_name: str
     credit: int
@@ -31,9 +30,8 @@ class CourseInput(BaseModel):
             }
         }
 
-
+# [사용자 프로필 (세션 데이터)]
 class UserProfile(BaseModel):
-    """사용자 프로필 (세션 데이터)"""
     admission_year: int  # 학번 (예: 2024)
     current_semester: Optional[int] = None  # 현재 학기 (1~8)
     courses_taken: List[CourseInput] = Field(default_factory=list)
@@ -58,33 +56,44 @@ class UserProfile(BaseModel):
             }
         }
 
-
+# [채팅 메시지]
 class ChatMessage(BaseModel):
-    """채팅 메시지"""
-    role: str  # "user" or "assistant"
+    role: str  # "user"(사용자) or "assistant"(챗봇)
     content: str
     timestamp: Optional[datetime] = None
+    
+    
+# [핸들러 응답] 각 핸들러 함수가 공통으로 반환하는 형식
+class HandlerResponse(BaseModel):
+    message: str                                                # 사용자에게 보여줄 최종 답변 문장
+    matched_function: str                                       # 지금 실행 중인 핸들러(함수) 이름. 오류추적할때 사용 
+    sources: List[Dict[str, Any]] = Field(default_factory=list) # 어떤 DB의 데이터를 참고했는지 이름 
+    user_profile: Optional[UserProfile] = None                  # 각 개인의 정보 (졸업사정 등은 개인 학번, 입학년도 등이 필요함)
+    needs_profile: bool = False                                 # 답변이 완료된게 아니라 사용자에게 추가적인 질문을 더 해야하는지 여부 (개인 맞춤형 질문에서 사용)
+    sections: Optional[List[Dict[str, Any]]] = None             # 식도락 키워드 묶음
+    restaurants: List[dict] = []                                # 키워드별 결과
 
 
+# [챗봇 요청] 사용자가 질문했을 때 프론트에서 들어오는 요청 형식
 class ChatRequest(BaseModel):
-    """챗봇 요청"""
     message: str
     session_id: Optional[str] = None
     user_profile: Optional[UserProfile] = None
     history: List[ChatMessage] = Field(default_factory=list)
 
 
+# [챗봇 응답] 백엔드에서 프론트로 전송해주는 최종 응답 형식 
 class ChatResponse(BaseModel):
-    """챗봇 응답"""
     message: str
     sources: List[Dict[str, Any]] = Field(default_factory=list)
     matched_function: Optional[str] = None
+    user_profile: Optional[UserProfile] = None
     session_id: Optional[str] = None
     sections: Optional[List[dict]] = None
 
 
+# [헬스 체크 응답]
 class HealthCheck(BaseModel):
-    """헬스체크 응답"""
     status: str
     timestamp: datetime
     version: str = "1.0.0"

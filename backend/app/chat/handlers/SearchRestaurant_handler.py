@@ -22,6 +22,7 @@ from kiwipiepy import Kiwi
 
 from app.database.supabase_client import supabase
 from app.domain.restaurant.kakao_map_client import kakao_map_client
+from app.models.schemas import HandlerResponse
 
 DEFAULT_LOCATION_KEYWORD = "순천대"
 
@@ -134,7 +135,7 @@ def handle_search_restaurant_query(
         combine_mode: Optional[str] = None,
         # 원본 사용자 질문
         message: str = ""
-)-> Dict[str,Any]:
+)-> HandlerResponse:
     # =========1.위치 추출=============
     # 위치는 kiwi로 우선 추출
     kiwi_location = _extract_location_keyword(message)
@@ -153,12 +154,15 @@ def handle_search_restaurant_query(
 
     # 위치 기본값도 매칭 못했다면
     if location["latitude"] is None:
-        return{
-            "message": "위치 정보를 찾을 수 없어요. 다시 시도해주세요. 😥",
-            "matched_function": "handle_search_restaurant_query",
-            "sources": [],
-            "needs_profile": False
-        }
+        return HandlerResponse(
+            message="위치 정보를 찾을 수 없어요. 다시 시도해주세요. 😥",
+            matched_function="handle_search_restaurant_query",
+            sources=[],
+            user_profile=None,
+            needs_profile=False,
+            sections=[],
+            restaurants=[],
+        )
 
     # =========2. 음식키워드별 카카오맵 검색=============
     """
@@ -198,6 +202,7 @@ def handle_search_restaurant_query(
             )
             for kw in food_keyword
         }
+    print(f"[KAKAO] 검색 결과 개수: { {kw: len(v) for kw, v in results_by_food.items()} }")
 
     # 음식 키워드 안내 문구 준비
     if not food_keyword:
@@ -231,37 +236,29 @@ def handle_search_restaurant_query(
                 "restaurants": [_format_place(p) for p in top3]
             })
         if not has_any_result:
-            return {
-                "message": "근처에서 해당 유형의 장소를 찾을 수 없습니다. 😥",
-                "matched_function": "handle_search_restaurant_query",
-                "sources": [],
-                "needs_profile": False
-            }
-        return {
-            "message": response_message,
-            "sections": sections,
-            "matched_function": "handle_search_restaurant_query",
-            "sources": [],
-            "needs_profile": False
-        }
+            return HandlerResponse(
+                message= "근처에서 해당 유형의 장소를 찾을 수 없습니다. 😥",
+                matched_function= "handle_search_restaurant_query",
+            )
+        return HandlerResponse(
+            message= response_message,
+            sections= sections,
+            matched_function= "handle_search_restaurant_query"
+        )
     # # and이거나 단일 키워드: 기존처럼 통합 응답
     else:
         all_results = [r for results in results_by_food.values() for r in results]
         top3 = all_results[:3]
         if not top3:
-            return {
-                "message": "근처에서 해당 유형의 장소를 찾을 수 없습니다. 😥",
-                "matched_function": "handle_search_restaurant_query",
-                "sources": [],
-                "needs_profile": False
-            }
+            return HandlerResponse(
+                message= "근처에서 해당 유형의 장소를 찾을 수 없습니다. 😥",
+                matched_function= "handle_search_restaurant_query",
+            )
         label = "/".join(results_by_food.keys())
-        return {
-            "message": response_message,
-            "sections": [
-                {"keyword": label, "restaurants": [_format_place(p) for p in top3]}
+        return HandlerResponse(
+            message= response_message,
+            sections= [
+                {"keyword": label,"restaurants": [_format_place(p) for p in top3]}
             ],
-            "matched_function": "handle_search_restaurant_query",
-            "sources": [],
-            "needs_profile": False
-        }
+            matched_function= "handle_search_restaurant_query",
+        )

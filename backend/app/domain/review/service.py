@@ -4,7 +4,7 @@
 from typing import List, Dict, Any, Optional
 from sentence_transformers import SentenceTransformer
 from langchain_openai import ChatOpenAI
-from langchain.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate
 from app.config import settings
 from app.database.supabase_client import supabase
 
