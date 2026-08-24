@@ -4,7 +4,7 @@ FastAPI 메인 애플리케이션 - 통합 버전
 import sys
 import traceback
 
-from app.api import graduation
+from app.api import graduation, restaurant
 
 try:
     from fastapi import FastAPI, HTTPException
@@ -104,6 +104,9 @@ app.include_router(review_admin.router)
 app.include_router(autocomplete_router)
 app.include_router(calendar_router)
 app.include_router(faq_router)
+
+# 식도락 라우터
+app.include_router(restaurant.router)
 
 
 @app.get("/", response_model=HealthCheck)

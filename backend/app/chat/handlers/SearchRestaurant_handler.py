@@ -14,6 +14,8 @@
     "needs_profile": 사용자 개인 데이터가 필요한지 여부
 """
 
+import re
+
 from typing import Dict, Any, Optional, List
 
 from kiwipiepy import Kiwi
@@ -83,6 +85,46 @@ def _format_place(place: dict) -> dict:
             "category": place.get('category_name','').split('>')[-1].strip(),
         }
 
+# or/and 판단용 조사 패턴 (or이 먼저 매칭되도록 순서 중요 - "이나"가 "이랑"보다 먼저 체크되게)
+OR_PATTERN = re.compile(r'(이나|나)(?=\s|$)')
+AND_PATTERN = re.compile(r'(이랑|랑|와|과)(?=\s|$)')
+
+
+# [보조 메서드] "A나 B", "A랑 B" 패턴에서 연결된 음식 후보를 원문에서 직접 추출 (DB 불필요)
+def _extract_connected_food_pairs(message: str) -> List[str]:
+    tokens = kiwi.analyze(message)[0][0]
+
+    candidates = []
+    for i, t in enumerate(tokens):
+        # 명사(NNG) 바로 뒤에 접속조사(JC, JX 중 이나/이랑/랑/와/과류)가 붙으면
+        if t.tag == 'NNG' and i + 1 < len(tokens):
+            next_t = tokens[i + 1]
+            if next_t.tag in ('JC', 'JX') and next_t.form in ('나', '이나', '랑', '이랑', '와', '과'):
+                candidates.append(t.form)
+                # 그 다음에 오는 명사도 후보로
+                if i + 2 < len(tokens) and tokens[i + 2].tag == 'NNG':
+                    candidates.append(tokens[i + 2].form)
+
+    return candidates
+
+# [보조 메서드] 원문에서 or/and 조사를 규칙 기반으로 재확인 (LLM 판단 보정용)
+def _detect_combine_mode(message: str, llm_combine_mode: Optional[str]) -> Optional[str]:
+    if OR_PATTERN.search(message):
+        return "or"
+    if AND_PATTERN.search(message):
+        return "and"
+    return llm_combine_mode  # 패턴 못 찾으면 LLM 판단 그대로 신뢰
+
+def _augment_food_keywords(message: str, llm_food_keyword: Optional[List[str]]) -> Optional[List[str]]:
+    connected_pairs = _extract_connected_food_pairs(message)
+
+    if not llm_food_keyword:
+        return llm_food_keyword  # LLM이 아예 못 뽑았으면 굳이 우리가 추측하지 않음 (오탐 방지)
+
+    # LLM이 하나라도 뽑았다면, 원문에서 접속조사로 연결된 명사들과 합집합
+    combined = list(dict.fromkeys(llm_food_keyword + connected_pairs))
+    return combined
+
 def handle_search_restaurant_query(
         # LLM이 뽑아준 원본 값(참고용/폴백)
         location_keyword: Optional[str] = None,
@@ -125,6 +167,13 @@ def handle_search_restaurant_query(
         음식 키워드가 없는 경우:
             좌표 기반으로 "음식점 전체"(FD6) 카테고리 검색
     """
+
+    # ── 음식 키워드 / combine_mode 보정 ──
+    food_keyword = _augment_food_keywords(message, food_keyword)
+    combine_mode = _detect_combine_mode(message, combine_mode)
+
+    print(f"[FOOD] 보정 후 food_keyword={food_keyword}, combine_mode={combine_mode}")
+
     # 음식 키워드 없음
     if not food_keyword:
         results_by_food = {
@@ -168,8 +217,8 @@ def handle_search_restaurant_query(
 
     # =========3.or인지 and인지 판단==========
     use_or = combine_mode == "or" or (food_keyword and len(food_keyword) > 1 and combine_mode != "and")
+    print(f"[DEBUG] food_keyword={food_keyword}, combine_mode={combine_mode}, use_or={use_or}")    # or분기 : 섹션별로 응답 생성
 
-    # or분기 : 섹션별로 응답 생성
     if use_or:
         sections = []
         has_any_result = False

@@ -88,3 +88,9 @@ class HealthCheck(BaseModel):
     status: str
     timestamp: datetime
     version: str = "1.0.0"
+
+class RestaurantReviewCreate(BaseModel):
+    """식도락 리뷰 작성"""
+    place_url: str
+    place_name: Optional[str] = None
+    content: str
