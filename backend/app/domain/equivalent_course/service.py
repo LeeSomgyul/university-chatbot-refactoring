@@ -12,9 +12,9 @@ class EquivalentCourseServiceOptimized:
         self._reverse_cache: Dict[str, List[str]] = {}  # {new_code: [old_codes]}
         self._course_chains: Dict[str, List[str]] = {}  # {code: [code1, code2, ...]}
         self._is_loaded = False
-        
+
+    # [캐싱] DB의 equivalent_courses 테이블의 값들을 전체 읽어서 메모리에 캐싱(저장) 
     def load_all_equivalents(self):
-        """앱 시작 시 모든 동일대체 정보를 메모리에 로드"""
         if self._is_loaded:
             return
         
@@ -34,6 +34,7 @@ class EquivalentCourseServiceOptimized:
                 new_code = row['new_course_code']
                 
                 self._equivalents_cache[old_code] = {
+                    'old_course_name': row.get('old_course_name', ''),
                     'new_course_code': new_code,
                     'new_course_name': row.get('new_course_name', ''),
                     'mapping_type': row.get('mapping_type', ''),
@@ -99,26 +100,25 @@ class EquivalentCourseServiceOptimized:
         
         # 역방향 체인을 앞에 추가
         return list(reversed(reverse_chain)) + chain
-    
+
+    # ⭕사용
+    # [두 과목 코드가 동일/대체 과목인지 판단]
+    # 예) CS0852의 체인: [CS0601, CS0852, CS0856]  (기초설계→모바일프로그래밍→모바일프로그래밍
+    # 예) CS0856의 체인: [CS0601, CS0852, CS0856]
+    # 예) 결과: CS0852와 CS0856가 같은 체인에 속하기 때문에 동일/대체 교과목이라고 판단
     def is_equivalent(self, code1: str, code2: str) -> bool:
-        """
-        두 과목 코드가 동일/대체 과목인지 확인 (메모리 기반 - DB 쿼리 0회!)
-        
-        Example:
-            is_equivalent("CS0116", "CS0863") → True
-        """
-        # 초기 로드 확인
+        # 1. 초기 로드 확인
         if not self._is_loaded:
             self.load_all_equivalents()
         
         if code1 == code2:
             return True
         
-        # 체인 조회 (메모리에서)
+        # 2. 체인 조회
         chain1 = self._course_chains.get(code1, [code1])
         chain2 = self._course_chains.get(code2, [code2])
         
-        # 두 체인에 공통 코드가 있으면 동일/대체
+        # 3. 두 체인에 공통 코드가 있으면 동일/대체
         return bool(set(chain1) & set(chain2))
 
     # ⭕사용
@@ -162,35 +162,31 @@ class EquivalentCourseServiceOptimized:
             self.load_all_equivalents()
         
         return self._course_chains.get(course_code, [course_code])
-    
+
+    # [과목 코드를 받아서 과거 ~ 현재까지 과목명이 어떻게 바뀌었는지 변경 이력 조회 및 조립]
     def get_course_history(self, course_code: str, max_depth: int = 10) -> List[Dict]:
-        """
-        과목 변경 이력 전체 조회 (메모리 기반)
-        
-        Returns:
-            [
-                {"code": "CS0116", "name": "컴퓨터그래픽스", "mapping_type": None},
-                {"code": "CS0612", "name": "컴퓨터그래픽스", "mapping_type": "동일"},
-                {"code": "CS0863", "name": "HCI(AR/VR/XR)", "mapping_type": "대체"}
-            ]
-        """
+        # 1. 메모리에 캐시 데이터가 없다면 DB에서 1회 가져오기 
         if not self._is_loaded:
             self.load_all_equivalents()
-        
+
+        # 2. 한 과목코드가 속한 전체 체인 값 가져오기 
+        # 예: CS0612를 넣으면 ['CS0116', 'CS0612', 'CS0863'] 출력 
         chain = self._course_chains.get(course_code, [course_code])
         history = []
-        
+
+        # 3. 체인 목록 순회 
         for i, code in enumerate(chain):
             if i == 0:
-                # 시작 과목
-                course_info = self._get_course_info(code)
+                # 3-1. 시작 과목 (체인의 맨 앞)
+                equiv = self._equivalents_cache.get(code)
+                name = equiv['old_course_name'] if equiv else "알 수 없음"
                 history.append({
                     "code": code,
-                    "name": course_info['name'] if course_info else "알 수 없음",
+                    "name": name,
                     "mapping_type": None
                 })
             else:
-                # 변경된 과목
+                # 3-2. 변경된 과목 (1번 인덱스부터)
                 prev_code = chain[i-1]
                 equiv = self._equivalents_cache.get(prev_code)
                 if equiv:
@@ -199,7 +195,8 @@ class EquivalentCourseServiceOptimized:
                         "name": equiv['new_course_name'],
                         "mapping_type": equiv['mapping_type']
                     })
-        
+
+        # 4. 시작~최신 과목까지 변경 이력 응답 
         return history
     
     def format_course_history(self, course_code: str) -> str:
@@ -219,29 +216,14 @@ class EquivalentCourseServiceOptimized:
         
         return " → ".join(parts)
     
-    def _get_course_info(self, course_code: str) -> Optional[Dict]:
-        """curriculums 테이블에서 과목 정보 조회 (캐싱 가능)"""
-        try:
-            result = supabase.table('curriculums')\
-                .select('course_name')\
-                .eq('course_code', course_code)\
-                .limit(1)\
-                .execute()
-            
-            if result.data and len(result.data) > 0:
-                return {"name": result.data[0]['course_name']}
-            return None
-        except:
-            return None
     
     def resolve_course_code(self, course_code: str) -> str:
         """과목 코드를 최신 코드로 변환"""
         return self.get_latest_course_code(course_code)
 
     # ⭕사용
-    # [함수] 과목이 바뀐적 있는지 확인
+    # [과목이 바뀐적 있는지 확인]
     def get_mapping_info(self, course_code: str) -> Optional[str]:
-        """과목이 바뀌었는지 확인하고 정보 반환"""
         history = self.get_course_history(course_code)
         
         if len(history) <= 1:

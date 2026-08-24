@@ -4,9 +4,11 @@
 
 from typing import Dict, Any, List
 from langchain_openai import ChatOpenAI
-from langchain.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 from app.config import settings
 from app.domain.vector_search.service import get_vector_service
+from app.models.schemas import HandlerResponse
 
 _llm = None
 _vector_service = None
@@ -30,9 +32,8 @@ def _get_vs():
         _vector_service = get_vector_service()
     return _vector_service
 
-
-def handle_search_general_query(message: str, history: List = None) -> Dict[str, Any]:
-    """일반 정보 질문 처리 (벡터 검색)"""
+# [일반 정보 질문 처리 (벡터 검색)]
+def handle_search_general_query(message: str, history: List[BaseMessage] = None) -> HandlerResponse:
     if history is None:
         history = []
 
@@ -42,8 +43,8 @@ def handle_search_general_query(message: str, history: List = None) -> Dict[str,
         try:
             history_text = ""
             for msg in history[-4:]:
-                role = "학생" if msg["role"] == "user" else "챗봇"
-                history_text += f"{role}: {msg['content']}\n"
+                role = "학생" if isinstance(msg, HumanMessage) else "챗봇"
+                history_text += f"{role}: {msg.content}\n"
 
             rewrite_prompt = ChatPromptTemplate.from_messages([
                 ("system", """당신은 검색 쿼리를 개선하는 전문가입니다.
@@ -96,12 +97,10 @@ def handle_search_general_query(message: str, history: List = None) -> Dict[str,
     search_results = vector_service.search(search_query, k=5)
 
     if not search_results:
-        return {
-            "message": "죄송해요, 관련 정보를 찾을 수 없어요. 다른 질문을 해주시겠어요? 🤔",
-            "matched_function": "handle_search_general_query",
-            "sources": [],
-            "needs_profile": False
-        }
+        return HandlerResponse(
+            message="죄송해요, 관련 정보를 찾을 수 없어요. 다른 질문을 해주시겠어요? 🤔",
+            matched_function="handle_search_general_query"
+        )
 
     context = vector_service.format_search_results(search_results)
 
@@ -123,10 +122,10 @@ def handle_search_general_query(message: str, history: List = None) -> Dict[str,
 """)
     ]
     for msg in history:
-        if msg["role"] == "user":
-            messages.append(("user", msg["content"]))
-        elif msg["role"] == "assistant":
-            messages.append(("assistant", msg["content"]))
+        if isinstance(msg, HumanMessage):
+            messages.append(("user", msg.content))
+        elif isinstance(msg, AIMessage):
+            messages.append(("assistant", msg.content))
     messages.append(("user", message))
 
     prompt = ChatPromptTemplate.from_messages(messages)
@@ -145,9 +144,8 @@ def handle_search_general_query(message: str, history: List = None) -> Dict[str,
         else:
             answer = "죄송해요, 답변 생성 중 오류가 발생했어요. 다시 시도해주세요. 😅"
 
-    return {
-        "message": answer,
-        "matched_function": "handle_search_general_query",
-        "sources": search_results,
-        "needs_profile": False
-    }
+    return HandlerResponse(
+        message=answer,
+        matched_function="handle_search_general_query",
+        sources=search_results
+    )
