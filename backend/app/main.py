@@ -1,6 +1,9 @@
 """
 FastAPI 메인 애플리케이션 - 통합 버전
 """
+from dotenv import load_dotenv
+load_dotenv()
+
 import sys
 import traceback
 
