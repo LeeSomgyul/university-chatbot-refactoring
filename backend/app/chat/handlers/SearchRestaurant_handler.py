@@ -201,12 +201,15 @@ def _augment_food_keywords(message: str, llm_food_keyword: Optional[List[str]]) 
     return combined
 
 # 리뷰 기반 흐름
-def _handle_review_based_search(location: dict, final_location_keyword: Optional[str], review_query: str)-> HandlerResponse:
+def _handle_review_based_search(location: dict, final_location_keyword: Optional[str], review_query: str,  exclude_urls: Optional[List[str]] = None,)-> HandlerResponse:
     candidates = kakao_map_client.search_by_category(
         latitude=location["latitude"],
         longitude=location["longitude"],
         category_code="FD6"
     )
+
+    if exclude_urls:
+        candidates = [p for p in candidates if p.get('place_url') not in exclude_urls]
 
     # 후보 => 벡터 유사도 매칭 => 임계값 넘는 장소들 정렬하여 반환
     matched = _match_by_review_query(candidates, review_query)
@@ -252,6 +255,7 @@ def handle_search_restaurant_query(
         message: str = "",
         # LLM이 뽑아준 리뷰 키워드
         review_query:  Optional[str] = None,
+        exclude_urls: Optional[List[str]] = None,
 )-> HandlerResponse:
     # =========1.위치 추출=============
     # 위치는 kiwi로 우선 추출
@@ -283,7 +287,7 @@ def handle_search_restaurant_query(
 
     # =========리뷰 키워드별 카카오맵 검색=============
     if review_query:
-        return _handle_review_based_search(location, final_location_keyword, review_query)
+        return _handle_review_based_search(location, final_location_keyword, review_query,exclude_urls)
 
     # =========2. 음식키워드별 카카오맵 검색=============
     """
@@ -325,6 +329,12 @@ def handle_search_restaurant_query(
         }
     print(f"[KAKAO] 검색 결과 개수: { {kw: len(v) for kw, v in results_by_food.items()} }")
 
+    if exclude_urls:
+        results_by_food = {
+            kw: [r for r in results if r.get('place_url') not in exclude_urls]
+            for kw, results in results_by_food.items()
+        }
+
     # 음식 키워드 안내 문구 준비
     if not food_keyword:
         food_note = ""
@@ -361,10 +371,17 @@ def handle_search_restaurant_query(
                 message= "근처에서 해당 유형의 장소를 찾을 수 없습니다. 😥",
                 matched_function= "handle_search_restaurant_query",
             )
+        shown_urls = [r.get('url') for s in sections for r in s['restaurants']]
         return HandlerResponse(
             message= response_message,
             sections= sections,
-            matched_function= "handle_search_restaurant_query"
+            matched_function= "handle_search_restaurant_query",
+            last_restaurant_search={
+                "location_keyword": final_location_keyword,
+                "food_keyword": food_keyword,
+                "review_query": None,
+                "shown_place_urls": shown_urls,
+            }
         )
     # # and이거나 단일 키워드: 기존처럼 통합 응답
     else:
@@ -376,10 +393,18 @@ def handle_search_restaurant_query(
                 matched_function= "handle_search_restaurant_query",
             )
         label = "/".join(results_by_food.keys())
+        restaurant = [_attach_review_summary(p) for p in top3]
+        shown_urls = [r.get('url') for r in restaurant]
         return HandlerResponse(
             message= response_message,
             sections= [
-                {"keyword": label,"restaurants": [_attach_review_summary(p) for p in top3]}
+                {"keyword": label,"restaurants": restaurant}
             ],
             matched_function= "handle_search_restaurant_query",
+            last_restaurant_search={
+                "location_keyword": final_location_keyword,
+                "food_keyword": food_keyword,
+                "review_query": None,
+                "shown_place_urls": shown_urls,
+            }
         )

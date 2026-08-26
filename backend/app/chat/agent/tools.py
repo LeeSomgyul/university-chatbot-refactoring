@@ -161,14 +161,16 @@ def search_general(
 # location_keyword: 키위매칭/LLM 풀백으로 얻은 위치 키워드
 # food_keyword: LLM으로 얻은 음식 키워드 (복수처리)
 # combine_mode: 복수 음식키워드 and/or 판단 (섹션 처리용)
-@tool(response_format="content_and_artifact")
+@tool
 def search_restaurant(
     message: str,
+    state: Annotated[AgentState, InjectedState],
+    tool_call_id: Annotated[str, InjectedToolCallId],
     location_keyword: Optional[str] = None,
     food_keyword: Optional[List[str]] = None,
     combine_mode: Optional[str] = None,
     review_query: Optional[str] = None,
-):
+)->Command:
     """
     학교 근처 음식점, 카페, 맛집 추천 요청을 처리한다. (카카오맵 실시간 검색)
 
@@ -194,22 +196,39 @@ def search_restaurant(
     예: "청결한 식당 추천" → review_query="청결도"
     단순 음식 종류 요청("떡볶이 맛집 추천해줘")에는 review_query를 채우지 않는다.
     """
+    # 검색 전 이전 조건 읽기 (state)
+    previous_search = state.get("last_restaurant_search")
+
+    # 더 추천해줘 => 검색조건이 하나도 없을 경우에만 이전 조건 이어받기
+    if not location_keyword and not food_keyword and not review_query and previous_search:
+        location_keyword = previous_search.get("location_keyword")
+        food_keyword = previous_search.get("food_keyword")
+        review_query = previous_search.get("review_query")
+
+    exclude_urls = previous_search.get("shown_place_urls") if previous_search else None
+
+    # 함수실행
     result = SearchRestaurant_handler.handle_search_restaurant_query(
         location_keyword=location_keyword,
         food_keyword=food_keyword,
         combine_mode=combine_mode,
         message=message,
-        review_query=review_query
+        review_query=review_query,
+        exclude_urls=exclude_urls
     )
 
-    message = result.message
-    restaurants = result.sections or []
-    sections = result.sections or []
+    # state 갱신 (artifact 대신 state 필드로 전달)
+    update: UpdateAgentState = {
+        "messages": [
+            ToolMessage(content=result.message, tool_call_id=tool_call_id)
+        ],
+        "last_search_sections": result.sections,
+    }
 
-    if not restaurants:
-        return message, []
+    if result.last_restaurant_search is not None:
+        update["last_restaurant_search"] = result.last_restaurant_search
 
-    return message, sections
+    return Command(update=update)
 
 
 # [함수 묶기] LLM(에이전트)이 아래 세트에서 골라서 자동으로 함수 사용

@@ -35,7 +35,9 @@ def chat(request: ChatRequest) -> ChatResponse:
     # 1. AgentState에 넘길 DTO
     initial_AgentState = {
         "messages": _convert_messages(request),
-        "user_profile": request.user_profile
+        "user_profile": request.user_profile,
+        "last_restaurant_search": request.last_restaurant_search,
+        "last_search_sections": None,
     }
     
     # 2. langgraph흐름으로 넘겨주기 -> 이후 LLM 돌고난 뒤 결과물 가져오기
@@ -66,6 +68,7 @@ def chat(request: ChatRequest) -> ChatResponse:
         sources=sources,
         matched_function="agent_graph",
         session_id=request.session_id,
-        sections=restaurants if restaurants else None,
+        sections=result_state.get("last_search_sections"),
         user_profile=result_state.get("user_profile"),
+        last_restaurant_search=result_state.get("last_restaurant_search"),
     )

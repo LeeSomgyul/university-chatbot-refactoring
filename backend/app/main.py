@@ -218,8 +218,8 @@ async def chat(request: ChatRequest):
             "content": response.message,
             "timestamp": datetime.now()
         })
-        result = chat_dispatcher(request)
-        return result
+
+        return response
     
     except Exception as e:
         print(f"❌ 챗봇 오류: {e}")

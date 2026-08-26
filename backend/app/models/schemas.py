@@ -72,6 +72,7 @@ class HandlerResponse(BaseModel):
     needs_profile: bool = False                                 # 답변이 완료된게 아니라 사용자에게 추가적인 질문을 더 해야하는지 여부 (개인 맞춤형 질문에서 사용)
     sections: Optional[List[Dict[str, Any]]] = None             # 식도락 키워드 묶음
     restaurants: List[dict] = []                                # 키워드별 결과
+    last_restaurant_search: Optional[Dict[str, Any]] = None     # 식도락 검색조건
 
 
 # [챗봇 요청] 사용자가 질문했을 때 프론트에서 들어오는 요청 형식
@@ -80,6 +81,7 @@ class ChatRequest(BaseModel):
     session_id: Optional[str] = None
     user_profile: Optional[UserProfile] = None
     history: List[ChatMessage] = Field(default_factory=list)
+    last_restaurant_search: Optional[Dict[str, Any]] = None
 
 
 # [챗봇 응답] 백엔드에서 프론트로 전송해주는 최종 응답 형식 
@@ -90,6 +92,7 @@ class ChatResponse(BaseModel):
     user_profile: Optional[UserProfile] = None
     session_id: Optional[str] = None
     sections: Optional[List[dict]] = None
+    last_restaurant_search: Optional[Dict[str, Any]] = None
 
 
 # [헬스 체크 응답]
