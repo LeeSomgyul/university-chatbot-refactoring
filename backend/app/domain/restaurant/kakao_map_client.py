@@ -25,8 +25,7 @@ class KakaoMapClient:
             latitude: float,
             longitude: float,
             category_code: str = "FD6",
-            ## ??
-            radius: int = 1000,
+            radius: int = 600,
             size: int = 15
     )->List[Dict]:
         # 카카오맵 API가 요구하는 파라미터 형식

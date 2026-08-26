@@ -19,6 +19,7 @@ import re
 from typing import Dict, Any, Optional, List
 
 from app.utils.embedding import get_embedding_model
+from app.utils.llm_client import generate_review_summary
 from kiwipiepy import Kiwi
 
 from app.database.supabase_client import supabase
@@ -31,6 +32,47 @@ kiwi = Kiwi()
 # 순천대 캠퍼스 내 위치는 유한하므로 사용자 사전에 등록
 kiwi.add_user_word("정문","NNP")
 kiwi.add_user_word("순천대", "NNP")
+
+# 리뷰 유사도 임계값
+SIMILARITY_THRESHOLD = 0.3
+
+# [보조 메서드] 리뷰 기반 검색 -유사도 매칭 함수
+# candidates: 카카오맵 반경 검색으로 가져온 가게 목록
+# review_query: LLM이 추출한 사용자가 원하는 리뷰 특징
+def _match_by_review_query(candidates: list, review_query: str)-> list:
+    # review_query를 벡터로 변환
+    model = get_embedding_model()
+    query_embedding = model.encode(review_query).tolist()
+
+    # matched: 가게,유사도,리뷰내용 조합
+    matched = []
+    for place in candidates:
+        place_url = place.get('place_url')
+        if not place_url:
+            continue
+        try:
+            # 한 가게의 리뷰내용과 가장 유사도 높은 리뷰 1개 반환
+            # => rbc호출에서 병목이 생길 수 있음 최대 db 조회 : 15번
+            result = supabase.rpc('match_reviews_by_place', {
+                'query_embedding': query_embedding,
+                'target_place_url': place_url,
+                'match_count': 5
+            }).execute()
+
+            if result.data:
+                similarity = result.data[0]['similarity']
+                print(f"[REVIEW_MATCH] {place_url}: similarity={similarity:.3f}")
+                if similarity >= SIMILARITY_THRESHOLD:
+                    relevant_reviews = [r['content'] for r in result.data]
+                    review_summary = generate_review_summary(relevant_reviews)
+                    matched.append((similarity, place, review_summary))
+        except Exception as e:
+            print(f"[REVIEW_MATCH] {place_url} 조회 실패: {e}")
+
+    # 유사도 높은 순 정렬
+    matched.sort(key=lambda x: x[0], reverse=True)
+
+    return matched
 
 # [보조 메서드] 카카오맵 결과에 미리 생성해둔 리뷰 요약을 붙임
 # place: 카카오맵 API의 원본 가게 데이터
@@ -158,6 +200,47 @@ def _augment_food_keywords(message: str, llm_food_keyword: Optional[List[str]]) 
     combined = list(dict.fromkeys(llm_food_keyword + connected_pairs))
     return combined
 
+# 리뷰 기반 흐름
+def _handle_review_based_search(location: dict, final_location_keyword: Optional[str], review_query: str)-> HandlerResponse:
+    candidates = kakao_map_client.search_by_category(
+        latitude=location["latitude"],
+        longitude=location["longitude"],
+        category_code="FD6"
+    )
+
+    # 후보 => 벡터 유사도 매칭 => 임계값 넘는 장소들 정렬하여 반환
+    matched = _match_by_review_query(candidates, review_query)
+
+    # 기본위치 안내문구 준비
+    if location["used_default"]:
+        response_message = f"순천대 본부 기준으로 맛집을 찾아드렸어요! 📍"
+    elif final_location_keyword:
+        response_message = f"{final_location_keyword} 근처 맛집을 찾아드렸어요! 😊"
+    else:
+        response_message = f"근처 맛집을 찾아드렸어요! 😊"
+
+
+    if not matched:
+        top3 = candidates[:3]
+        return HandlerResponse(
+            message=f"'{review_query}' 관련 리뷰를 찾지 못했어요. 대신 {response_message}",
+            sections=[{"keyword": "전체", "restaurants": [_attach_review_summary(p) for p in top3]}],
+            matched_function="handle_search_restaurant_query"
+        )
+    top3 = matched[:3]
+    restaurants = []
+    for similarity, place, review_content in top3:
+        formatted = _format_place(place)
+        formatted['review_summary'] = review_content
+        restaurants.append(formatted)
+
+    return HandlerResponse(
+        message=f"'{review_query}' 관련 리뷰의 {response_message}",
+        sections=[{"keyword": review_query, "restaurants": restaurants}],
+        matched_function="handle_search_restaurant_query",
+    )
+
+
 def handle_search_restaurant_query(
         # LLM이 뽑아준 원본 값(참고용/폴백)
         location_keyword: Optional[str] = None,
@@ -166,7 +249,9 @@ def handle_search_restaurant_query(
         # 음식키워드 복수 조사 -or/and
         combine_mode: Optional[str] = None,
         # 원본 사용자 질문
-        message: str = ""
+        message: str = "",
+        # LLM이 뽑아준 리뷰 키워드
+        review_query:  Optional[str] = None,
 )-> HandlerResponse:
     # =========1.위치 추출=============
     # 위치는 kiwi로 우선 추출
@@ -195,6 +280,10 @@ def handle_search_restaurant_query(
             sections=[],
             restaurants=[],
         )
+
+    # =========리뷰 키워드별 카카오맵 검색=============
+    if review_query:
+        return _handle_review_based_search(location, final_location_keyword, review_query)
 
     # =========2. 음식키워드별 카카오맵 검색=============
     """

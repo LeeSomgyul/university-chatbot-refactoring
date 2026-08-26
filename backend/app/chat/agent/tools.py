@@ -167,6 +167,7 @@ def search_restaurant(
     location_keyword: Optional[str] = None,
     food_keyword: Optional[List[str]] = None,
     combine_mode: Optional[str] = None,
+    review_query: Optional[str] = None,
 ):
     """
     학교 근처 음식점, 카페, 맛집 추천 요청을 처리한다. (카카오맵 실시간 검색)
@@ -184,12 +185,21 @@ def search_restaurant(
     food_keyword에 언급된 모든 음식을 리스트로 함께 담아라.
     예: "중식이나 분식" → food_keyword=["중식", "분식"], combine_mode="or"
     예: "떡볶이랑 마라탕" → food_keyword=["떡볶이", "마라탕"], combine_mode="and"
+
+    review_query: 사용자가 음식 종류가 아니라  맛/서비스/분위기 등
+    가게의 특징을 언급하면 이 값을 채운다. 학생 리뷰를 기반으로 검색한다.
+    예: "매운 거 잘하는 곳 추천해줘" → review_query="매운맛"
+    예: "친절한 곳 알려줘" → review_query="친절함"
+    예: "가성비 좋은 분식집" → review_query="가성비"
+    예: "청결한 식당 추천" → review_query="청결도"
+    단순 음식 종류 요청("떡볶이 맛집 추천해줘")에는 review_query를 채우지 않는다.
     """
     result = SearchRestaurant_handler.handle_search_restaurant_query(
         location_keyword=location_keyword,
         food_keyword=food_keyword,
         combine_mode=combine_mode,
-        message=message
+        message=message,
+        review_query=review_query
     )
 
     message = result.message
