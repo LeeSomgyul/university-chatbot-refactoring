@@ -156,7 +156,11 @@ def search_general(
     )
     return result.message
 
-# 6. 식도락 검색 
+# 6. 식도락 검색
+# message: 사용자의 질문 원문
+# location_keyword: 키위매칭/LLM 풀백으로 얻은 위치 키워드
+# food_keyword: LLM으로 얻은 음식 키워드 (복수처리)
+# combine_mode: 복수 음식키워드 and/or 판단 (섹션 처리용)
 @tool(response_format="content_and_artifact")
 def search_restaurant(
     message: str,

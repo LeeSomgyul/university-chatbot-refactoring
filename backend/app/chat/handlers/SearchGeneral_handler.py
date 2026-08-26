@@ -3,6 +3,8 @@
 # ===============================================
 
 from typing import Dict, Any, List
+
+from app.utils.llm_client import get_llm
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
@@ -12,18 +14,6 @@ from app.models.schemas import HandlerResponse
 
 _llm = None
 _vector_service = None
-
-
-def _get_llm() -> ChatOpenAI:
-    global _llm
-    if _llm is None:
-        _llm = ChatOpenAI(
-            model=settings.model_name,
-            temperature=settings.temperature,
-            max_tokens=settings.max_tokens,
-            openai_api_key=settings.openai_api_key
-        )
-    return _llm
 
 
 def _get_vs():
@@ -80,7 +70,7 @@ def handle_search_general_query(message: str, history: List[BaseMessage] = None)
 재구성된 검색 쿼리:""")
             ])
 
-            llm = _get_llm()
+            llm = get_llm()
             rewrite_chain = rewrite_prompt | llm
             rewrite_response = rewrite_chain.invoke({})
             search_query = rewrite_response.content.strip()
@@ -129,7 +119,7 @@ def handle_search_general_query(message: str, history: List[BaseMessage] = None)
     messages.append(("user", message))
 
     prompt = ChatPromptTemplate.from_messages(messages)
-    llm = _get_llm()
+    llm = get_llm()
     chain = prompt | llm
 
     try:
