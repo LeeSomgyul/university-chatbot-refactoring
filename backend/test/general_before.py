@@ -2,7 +2,7 @@ import json
 import csv
 from collections import defaultdict
 
-from app.domain.vector_search.service import get_vector_service
+from backend.app.domain.vector_search.vector_service import get_vector_service
 
 
 K_VALUES = [3, 10]  # 3 = 현재 search_general 운영값, 10 = 대조군

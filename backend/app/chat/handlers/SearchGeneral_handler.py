@@ -2,12 +2,12 @@
 #        [핸들러] 벡터DB: 일반 정보 검색
 # ===============================================
 
-from typing import Dict, Any, List
+from typing import List
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 from app.config import settings
-from app.domain.vector_search.service import get_vector_service
+from app.domain.vector_search.vector_service import get_vector_service
 from app.models.schemas import HandlerResponse
 
 _llm = None

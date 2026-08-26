@@ -70,6 +70,14 @@ class VectorSearchResult(BaseModel):
     content: str                                            # documents 테이블의 검색된 텍스트 본문
     metadata: Dict[str, Any] = Field(default_factory=dict)  # category, title 등
     similarity: Optional[float] = None                      # supabase에서 제공하는 유사도 
+    
+
+# [키워드 검색 결과 응답] documents 테이블에서 키워드 검색 후 질문에 맞는것 같은 데이터를 찾아온 형식
+class KeywordSearchResult(BaseModel):
+    id: int
+    content: str
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    rank_score: Optional[float] = None  # ts_rank 점수 (사용자의 질문에 대한 content_tsv 값의 빈도수 및 포함 여부로 계산)
 
     
 # [핸들러 응답] 각 핸들러 함수가 공통으로 반환하는 형식

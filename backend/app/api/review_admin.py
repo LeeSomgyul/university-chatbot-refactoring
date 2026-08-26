@@ -5,10 +5,9 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
-from sentence_transformers import SentenceTransformer
 
-from app.config import settings
 from app.database.supabase_client import supabase
+from app.utils.embedding_client import get_embedding_model
 
 
 router = APIRouter(prefix="/admin/reviews", tags=["Admin - Reviews"])
@@ -39,19 +38,6 @@ class RejectRequest(BaseModel):
     """거부 요청"""
     reviewed_by: Optional[str] = "admin"
     rejection_reason: str
-
-
-# ===== 임베딩 모델 (싱글톤) =====
-_embedding_model = None
-
-def get_embedding_model():
-    """임베딩 모델 싱글톤"""
-    global _embedding_model
-    if _embedding_model is None:
-        print(f"🔧 임베딩 모델 로딩: {settings.embedding_model}")
-        _embedding_model = SentenceTransformer(settings.embedding_model)
-        print("✅ 모델 로딩 완료")
-    return _embedding_model
 
 
 # ===== API Endpoints =====
