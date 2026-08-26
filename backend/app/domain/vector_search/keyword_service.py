@@ -26,7 +26,7 @@ def _build_tsquery(text: str) -> str:
 # - query: 사용자의 질문 텍스트 
 # - k: 검색 결과로 가져올 상위 문서(유사한 것) 개수 
 # - category_filter: 카테고리 필터 
-def search(
+def get_keyword_service(
     query: str, 
     k: int = 10,
     category_filter: Optional[str] = None

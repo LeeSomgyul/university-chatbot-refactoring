@@ -78,6 +78,15 @@ class KeywordSearchResult(BaseModel):
     content: str
     metadata: Dict[str, Any] = Field(default_factory=dict)
     rank_score: Optional[float] = None  # ts_rank 점수 (사용자의 질문에 대한 content_tsv 값의 빈도수 및 포함 여부로 계산)
+    
+    
+# [벡터 검색 결과 + 키워드 검색 결과] RRF로 융합한 최종 결과 
+class HybridSearchResult(BaseModel):
+    id: int
+    content: str
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    rrf_score: float                                        # RRF 융합 점수 (등수)
+    matched_by: List[str] = Field(default_factory=list)     # 벡터 or 키워드 or 벡터+키워드 셋중에 어디서 가져온 데이터인지 
 
     
 # [핸들러 응답] 각 핸들러 함수가 공통으로 반환하는 형식
