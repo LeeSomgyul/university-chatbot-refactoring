@@ -3,25 +3,16 @@
 # ===============================================
 # - 역할: 1단계 Aho-Corasick 알고리즘에서 인식되지 못한 단어를 형태소 분석을 통해 명사만 남긴다.
 
-from kiwipiepy import Kiwi
-
-_kiwi = None
+from app.utils.kiwi_client import get_kiwi
 
 _NOUN_TAGS = {"NNG", "NNP"} # 일반명사, 고유명사를 '명사'로 인정 
-
-# [보조 함수] Kiwi 형태소분석 엔진 1회 빌드 (단어 사전, 품사 규칙 등)
-def _get_kiwi() -> Kiwi:
-    global _kiwi
-    if _kiwi is None:
-        _kiwi = Kiwi()
-    return _kiwi
 
 
 # [메인 함수] 형태소 분석 실행 
 # 입력 텍스트에서 명사만 추출해서 이어붙인 문자열을 반환
 # 예: "이산수학을" -> "이산" + "수학" = "이산수학"
 def extract_nouns(text: str) -> str:
-    kiwi = _get_kiwi()
+    kiwi = get_kiwi()
 
     # 1. 문장을 최소 단위로 쪼갬
     # 예: "이산수학과" -> [Token(form='이산수학', tag='NNG'), Token(form='과', tag='JC')]
