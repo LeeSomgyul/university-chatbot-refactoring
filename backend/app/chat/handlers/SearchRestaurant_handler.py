@@ -22,65 +22,6 @@ from app.domain.restaurant.service import match_by_review_query, attach_review_s
 from app.models.schemas import HandlerResponse
 
 
-
-# 리뷰 기반 흐름
-def _handle_review_based_search(location: dict, final_location_keyword: Optional[str], review_query: str,  exclude_urls: Optional[List[str]] = None,)-> HandlerResponse:
-    candidates = kakao_map_client.search_by_category(
-        latitude=location["latitude"],
-        longitude=location["longitude"],
-        category_code="FD6"
-    )
-
-    if exclude_urls:
-        candidates = [p for p in candidates if p.get('place_url') not in exclude_urls]
-
-    # 후보 => 벡터 유사도 매칭 => 임계값 넘는 장소들 정렬하여 반환
-    matched = match_by_review_query(candidates, review_query)
-
-    # 기본위치 안내문구 준비
-    if location["used_default"]:
-        response_message = f"순천대 본부 기준으로 맛집을 찾아드렸어요! "
-    elif final_location_keyword:
-        response_message = f"{final_location_keyword} 근처 맛집을 찾아드렸어요! "
-    else:
-        response_message = f"근처 맛집을 찾아드렸어요! "
-
-
-    if not matched:
-        top3 = candidates[:3]
-        shown_urls = [p.get('place_url') for p in top3]
-        return HandlerResponse(
-            message=f"'{review_query}' 관련 리뷰를 찾지 못했어요. 대신 {response_message}",
-            sections=[{"keyword": "전체", "restaurants": [attach_review_summary(p) for p in top3]}],
-            matched_function="handle_search_restaurant_query",
-            last_restaurant_search={
-                "location_keyword": final_location_keyword,
-                "food_keyword": None,
-                "review_query": review_query,
-                "shown_place_urls": shown_urls,
-            }
-        )
-    top3 = matched[:3]
-    restaurants = []
-    for similarity, place, review_content in top3:
-        formatted = format_place(place)
-        formatted['review_summary'] = review_content
-        restaurants.append(formatted)
-    shown_urls = [r.get('url') for r in restaurants]
-    print(f"f====================={shown_urls}")
-    return HandlerResponse(
-        message=f"'{review_query}' 관련 리뷰의 {response_message}",
-        sections=[{"keyword": review_query, "restaurants": restaurants}],
-        matched_function="handle_search_restaurant_query",
-        last_restaurant_search={
-            "location_keyword": final_location_keyword,
-            "food_keyword": None,
-            "review_query": review_query,
-            "shown_place_urls": shown_urls,
-        }
-    )
-
-
 def handle_search_restaurant_query(
         # LLM이 뽑아준 원본 값(참고용/폴백)
         location_keyword: Optional[str] = None,
@@ -121,10 +62,6 @@ def handle_search_restaurant_query(
             sections=[],
             restaurants=[],
         )
-
-    # =========리뷰 키워드별 카카오맵 검색=============
-    if review_query:
-        return _handle_review_based_search(location, final_location_keyword, review_query,exclude_urls)
 
     # =========2. 음식키워드별 카카오맵 검색=============
     """
@@ -188,10 +125,61 @@ def handle_search_restaurant_query(
     else:
         response_message = f"근처 {food_note}맛집을 찾아드렸어요! "
 
+
     # =========3.or인지 and인지 판단==========
     use_or = combine_mode == "or" or (food_keyword and len(food_keyword) > 1 and combine_mode != "and")
     print(f"[DEBUG] food_keyword={food_keyword}, combine_mode={combine_mode}, use_or={use_or}")    # or분기 : 섹션별로 응답 생성
 
+    if not use_or:
+        all_results = [r for results in results_by_food.values() for r in results]
+        label = "/".join(results_by_food.keys())
+        results_by_food = {label: all_results}
+
+# =============3. 리뷰 키워드별 카카오맵 결과 필터링
+    if review_query:
+        sections= []
+        has_any = False
+        for kw, candidates in results_by_food.items():
+            # 후보 => 벡터 유사도 매칭 => 임계값 넘는 장소들 정렬하여 반환
+            matched = match_by_review_query(candidates, review_query)
+            # 후보 중(음식/위치/리뷰 키워드가 모두 매칭되는) 리뷰 매칭이 있는 경우
+            if matched:
+                has_any = True
+                top3 = matched[:3]
+                restaurants = []
+                for similarity, place, review_content in top3:
+                    formatted = format_place(place)
+                    formatted['review_summary'] = review_content
+                    restaurants.append(formatted)
+            # 매칭이 없는 경우 -> 음식/위치 키워드만 매칭된 값 폴백
+            else:
+                restaurants = [attach_review_summary(p) for p in candidates[:3]]
+            sections.append({"keyword": kw, "restaurants": restaurants})
+
+        # 리뷰 기반 안내 메시지 준비
+        if not has_any:
+            response_message = f"'{review_query}' 관련 리뷰를 찾지 못했어요. 대신 {response_message}"
+        else:
+            response_message = f"'{review_query}' 관련 리뷰의 {response_message}"
+
+        # 전부 매칭이 안됐다면 (else로 빠졌다면)
+        if not has_any:
+            pass
+
+        shown_urls = [r.get('url') for s in sections for r in s['restaurants']]
+        return HandlerResponse(
+            message=response_message,
+            sections=sections,
+            matched_function="handle_search_restaurant_query",
+            last_restaurant_search={
+                "location_keyword": final_location_keyword,
+                "food_keyword": food_keyword,
+                "review_query": review_query,   # ★ 둘 다 저장
+                "shown_place_urls": shown_urls,
+            }
+        )
+
+    # 리뷰 키워드가 없을때
     if use_or:
         sections = []
         has_any_result = False
@@ -222,8 +210,8 @@ def handle_search_restaurant_query(
         )
     # # and이거나 단일 키워드: 기존처럼 통합 응답
     else:
-        all_results = [r for results in results_by_food.values() for r in results]
-        top3 = all_results[:3]
+        label, results = next(iter(results_by_food.items()))
+        top3 = results[:3]
         if not top3:
             return HandlerResponse(
                 message= "근처에서 해당 유형의 장소를 찾을 수 없습니다. ",
