@@ -5,7 +5,6 @@
 from typing import NamedTuple, Dict, Any
 from langchain_openai import ChatOpenAI
 from langchain_core.runnables import Runnable
-from langchain_core.messages import AIMessage
 from app.config import settings
 from app.chat.routing_schemas import FUNCTIONS, FUNCTIONS_MAP
 

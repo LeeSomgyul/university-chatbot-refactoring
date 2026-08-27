@@ -163,7 +163,6 @@ def search_general(
 # combine_mode: 복수 음식키워드 and/or 판단 (섹션 처리용)
 @tool
 def search_restaurant(
-    message: str,
     state: Annotated[AgentState, InjectedState],
     tool_call_id: Annotated[str, InjectedToolCallId],
     location_keyword: Optional[str] = None,
@@ -196,17 +195,31 @@ def search_restaurant(
     예: "청결한 식당 추천" → review_query="청결도"
     단순 음식 종류 요청("떡볶이 맛집 추천해줘")에는 review_query를 채우지 않는다.
     """
+    message = state["messages"][-1].content
+    # 현재 검색한 조건 읽기
+    print(f"[CURRENT CONDITION] location={location_keyword}, food={food_keyword}, review={review_query}")
+
     # 검색 전 이전 조건 읽기 (state)
     previous_search = state.get("last_restaurant_search")
 
     # 더 추천해줘 => 검색조건이 하나도 없을 경우에만 이전 조건 이어받기
-    if not location_keyword and not food_keyword and not review_query and previous_search:
+    if not location_keyword and previous_search:
         location_keyword = previous_search.get("location_keyword")
+        print(f"[PREV_SEARCH_DEBUG] location={location_keyword}")
+    if not food_keyword and not review_query and previous_search:
         food_keyword = previous_search.get("food_keyword")
         review_query = previous_search.get("review_query")
+        print(f"[PREV_SEARCH_DEBUG] food={food_keyword}, review={review_query}")
 
-    exclude_urls = previous_search.get("shown_place_urls") if previous_search else None
-
+    is_same_condition = (
+            previous_search is not None
+            and location_keyword == previous_search.get("location_keyword")
+            and food_keyword == previous_search.get("food_keyword")
+            and review_query == previous_search.get("review_query")
+    )
+    print(f"[IS_SAME_CONDITION] 이전 검색조건 일치 여부: {is_same_condition}")
+    exclude_urls = previous_search.get("shown_place_urls") if is_same_condition else None
+    print(f"[EXCLUDE_URLS] {exclude_urls}")
     # 함수실행
     result = SearchRestaurant_handler.handle_search_restaurant_query(
         location_keyword=location_keyword,
@@ -226,7 +239,15 @@ def search_restaurant(
     }
 
     if result.last_restaurant_search is not None:
-        update["last_restaurant_search"] = result.last_restaurant_search
+        new_search = result.last_restaurant_search
+        # 이전에 보여준 url + 새로 보여준 것 누적
+        if is_same_condition:
+            previous_urls = previous_search.get("shown_place_urls", []) if previous_search else []
+            new_urls = new_search.get("shown_place_urls", [])
+            # 중복제거하며 합치기
+            new_search["shown_place_urls"] = list(dict.fromkeys(previous_urls + new_urls))
+
+        update["last_restaurant_search"] = new_search
 
     return Command(update=update)
 

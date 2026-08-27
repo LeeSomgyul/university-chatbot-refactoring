@@ -174,6 +174,9 @@ async def chat(request: ChatRequest):
             "content": request.message,
             "timestamp": datetime.now()
         })
+
+        # 세션에서 식도락 검색 조건 가져오기
+        last_restaurant_search = session.get('last_restaurant_search') if session else None
         
         session_messages = session.get('history', []) if session else []
         
@@ -203,7 +206,8 @@ async def chat(request: ChatRequest):
             message=request.message,
             session_id=session_id,
             user_profile=user_profile,
-            history=history_for_llm
+            history=history_for_llm,
+            last_restaurant_search=last_restaurant_search
         )
         
         response = chat_dispatcher(agent_result)
@@ -211,7 +215,10 @@ async def chat(request: ChatRequest):
         if response.user_profile:
             session_store.update_profile(session_id, response.user_profile)
             print(f"  ✅ 세션에 프로필 저장: {response.user_profile.admission_year}학번")
-        
+
+        if response.last_restaurant_search:
+            session_store.update_last_restaurant_search(session_id, response.last_restaurant_search)
+
         # 세션에 메시지 저장
         session_store.add_message(session_id, {
             "role": "assistant",

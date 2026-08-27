@@ -41,7 +41,11 @@ class SessionStore:
         """사용자 프로필 업데이트"""
         if session_id in self.sessions:
             self.sessions[session_id]['user_profile'] = user_profile
-    
+
+    def update_last_restaurant_search(self, session_id: str, last_restaurant_search):
+        if session_id in self.sessions:
+            self.sessions[session_id]['last_restaurant_search'] = last_restaurant_search
+
     def add_message(self, session_id: str, message: ChatMessage):
         """대화 히스토리에 메시지 추가"""
         if session_id in self.sessions:

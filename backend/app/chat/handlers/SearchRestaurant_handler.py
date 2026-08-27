@@ -194,7 +194,7 @@ def _augment_food_keywords(message: str, llm_food_keyword: Optional[List[str]]) 
     connected_pairs = _extract_connected_food_pairs(message)
 
     if not llm_food_keyword:
-        return llm_food_keyword  # LLM이 아예 못 뽑았으면 굳이 우리가 추측하지 않음 (오탐 방지)
+        return llm_food_keyword  # LLM이 아예 못 뽑았으면 굳이 추측하지 않음 (오탐 방지)
 
     # LLM이 하나라도 뽑았다면, 원문에서 접속조사로 연결된 명사들과 합집합
     combined = list(dict.fromkeys(llm_food_keyword + connected_pairs))
@@ -225,10 +225,17 @@ def _handle_review_based_search(location: dict, final_location_keyword: Optional
 
     if not matched:
         top3 = candidates[:3]
+        shown_urls = [p.get('place_url') for p in top3]
         return HandlerResponse(
             message=f"'{review_query}' 관련 리뷰를 찾지 못했어요. 대신 {response_message}",
             sections=[{"keyword": "전체", "restaurants": [_attach_review_summary(p) for p in top3]}],
-            matched_function="handle_search_restaurant_query"
+            matched_function="handle_search_restaurant_query",
+            last_restaurant_search={
+                "location_keyword": final_location_keyword,
+                "food_keyword": None,
+                "review_query": review_query,
+                "shown_place_urls": shown_urls,
+            }
         )
     top3 = matched[:3]
     restaurants = []
@@ -236,11 +243,18 @@ def _handle_review_based_search(location: dict, final_location_keyword: Optional
         formatted = _format_place(place)
         formatted['review_summary'] = review_content
         restaurants.append(formatted)
-
+    shown_urls = [r.get('url') for r in restaurants]
+    print(f"f====================={shown_urls}")
     return HandlerResponse(
         message=f"'{review_query}' 관련 리뷰의 {response_message}",
         sections=[{"keyword": review_query, "restaurants": restaurants}],
         matched_function="handle_search_restaurant_query",
+        last_restaurant_search={
+            "location_keyword": final_location_keyword,
+            "food_keyword": None,
+            "review_query": review_query,
+            "shown_place_urls": shown_urls,
+        }
     )
 
 
