@@ -24,7 +24,7 @@ export const RestaurantCards = ({ restaurants, onWriteReview  }: RestaurantCards
                         href={r.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center mt-3 mb-1 gap-3 px-10 py-3.5 rounded-2xl bg-white border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:border-[#BADDFE] transition-all duration-150"
+                        className="flex items-center mt-3 mb-1 gap-3 px-10 py-3.5 rounded-2xl bg-white border border-gray-100 shadow-sm hover:border-[#BADDFE] transition-all duration-150"
                     >
                         <div className="flex-shrink-0 w-10 h-10 bg-[#BADDFE] flex items-center justify-center text-xl rounded-xl">
                             🍽️
@@ -46,7 +46,10 @@ export const RestaurantCards = ({ restaurants, onWriteReview  }: RestaurantCards
                             </div>
                             {r.review_summary && (
                                 <div>
-                                    {r.review_summary}
+                                    <p className="text-sm text-gray-500 mt-3">재학생들의 리뷰를 통합 요약한 내용입니다.</p>
+                                    <div className="text-[#004C97] text-sm font-semibold">
+                                        {r.review_summary}
+                                    </div>
                                 </div>
                             )}
                             <div className="text-xs font-semibold text-gray-500 mt-1">
@@ -54,9 +57,11 @@ export const RestaurantCards = ({ restaurants, onWriteReview  }: RestaurantCards
                             </div>
                         </div>
                     </a>
-                    <button onClick={()=>onWriteReview(r)} className="text-xs text-[#004C97] underline ml-2">
-                        리뷰 남기기
-                    </button>
+                    <div className="text-right">
+                        <button onClick={()=>onWriteReview(r)} className="cursor-pointer text-xs text-[#004C97] underline ml-2">
+                            리뷰 남기기
+                        </button>
+                    </div>
                 </div>
             ))}
         </div>

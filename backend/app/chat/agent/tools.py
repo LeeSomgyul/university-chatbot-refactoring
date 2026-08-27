@@ -189,6 +189,7 @@ def search_restaurant(
 
     review_query: 사용자가 음식 종류가 아니라  맛/서비스/분위기 등
     가게의 특징을 언급하면 이 값을 채운다. 학생 리뷰를 기반으로 검색한다.
+    예: "개강총회하기 좋은 술집 추천해줘" → review_query="개강총회"
     예: "매운 거 잘하는 곳 추천해줘" → review_query="매운맛"
     예: "친절한 곳 알려줘" → review_query="친절함"
     예: "가성비 좋은 분식집" → review_query="가성비"
