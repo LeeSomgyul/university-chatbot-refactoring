@@ -1,6 +1,6 @@
 [
   {"category": "전공과목", "type": "정확식별자형", "question": "수강신청 하려는데 CS0857 과목 몇 학년에 주로 들어? 그리고 어떤 거 배우는 수업이야?", "answer_ids": [5370], "answer_titles": ["리눅스시스템"]},
-  {"category": "전공과목", "type": "정확식별자형", "question": "솔리디티(Solidity) 언어 써서 직접 스마트 계약 개발해보는 수업 이름이 뭐더라?", "answer_ids": [5383], "answer_titles": ["블록체인"]},
+  {"category": "전공과목", "type": "정확식별자형", "question": "솔리디티 언어 써서 직접 스마트 계약 개발해보는 수업 이름이 뭐더라?", "answer_ids": [5383], "answer_titles": ["블록체인"]},
   {"category": "전공과목", "type": "정확식별자형", "question": "CS0862 과목 몇 학점짜리 필수 교과목이야?", "answer_ids": [5366], "answer_titles": ["OSS개론"]},
   {"category": "전공과목", "type": "의미검색형", "question": "파이썬 코딩 처음 배우는 1학년 필수 전공과목이 뭔지 추천해 줄래?", "answer_ids": [5371], "answer_titles": ["프로그래밍기초"]},
   {"category": "전공과목", "type": "의미검색형", "question": "나 게임 개발 쪽으로 취업하고 싶은데, 유니티 엔진 다루거나 실제 게임 만들어보는 실습 과목 있을까?", "answer_ids": [5365, 5368], "answer_titles": ["모바일프로그래밍", "어드벤처디자인"]},
