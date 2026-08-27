@@ -1,13 +1,17 @@
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent))
+
 import json
 import csv
 from collections import defaultdict
 
-from backend.app.domain.vector_search.vector_service import get_vector_service
+from app.domain.vector_search import hybrid_service
 
 
-K_VALUES = [3, 10]  # 3 = 현재 search_general 운영값, 10 = 대조군
+K_VALUES = [5] 
 TESTSET_PATH = "test/general_testset.json"
-OUTPUT_CSV_PATH = "test/general_results_before.csv"
+OUTPUT_CSV_PATH = "test/general_results_after.csv"
 
 
 def load_testset(path: str) -> list[dict]:
@@ -21,7 +25,6 @@ def is_hit(returned_ids: list[int], answer_ids: list[int]) -> bool:
 
 
 def run_evaluation():
-    vector_service = get_vector_service()
     testset = load_testset(TESTSET_PATH)
 
     rows = []
@@ -43,12 +46,21 @@ def run_evaluation():
         }
 
         for k in K_VALUES:
-            results = vector_service.search(question, k=k)  # List[VectorSearchResult]
-            returned_ids = [r.id for r in results]           # dict.get('id') -> r.id (타입 적용)
+            results = hybrid_service.search(question, k=k)  # List[HybridSearchResult]
+            returned_ids = [r.id for r in results]
             hit = is_hit(returned_ids, answer_ids)
+
+            # 정답 id가 있다면, 그 문서가 어느 채널에서 잡혔는지 기록
+            # (없으면 빈 리스트 -> 실패 케이스)
+            matched_by_for_answer = []
+            for r in results:
+                if r.id in answer_ids:
+                    matched_by_for_answer = r.matched_by
+                    break
 
             row[f"returned_ids_k{k}"] = returned_ids
             row[f"hit_k{k}"] = hit
+            row[f"matched_by_k{k}"] = matched_by_for_answer
 
             stats_by_k[k][category]["total"] += 1
             stats_by_k[k][category]["hit"] += int(hit)
@@ -63,12 +75,11 @@ def run_evaluation():
 
     # ---- 콘솔 출력 ----
     print("=" * 70)
-    print("Before 측정 결과 — 순수 벡터 검색 (search_general)")
+    print("After 측정 결과 — 하이브리드 검색 (벡터 + 키워드 RRF)")
     print("=" * 70)
 
     for k in K_VALUES:
-        label = " (현재 운영값)" if k == 3 else " (대조군)"
-        print(f"\n--- k={k}{label} ---")
+        print(f"\n--- k={k} (실제 운영값) ---")
 
         print("\n[카테고리별 Recall]")
         for category, s in stats_by_k[k].items():
@@ -84,10 +95,10 @@ def run_evaluation():
         overall_recall = overall["hit"] / overall["total"] * 100
         print(f"\n[전체] {overall['hit']}/{overall['total']}  ({overall_recall:.0f}%)")
 
-    # ---- CSV 저장 (After 측정과 비교할 때 재사용) ----
+    # ---- CSV 저장 ----
     fieldnames = ["category", "type", "question", "answer_ids"]
     for k in K_VALUES:
-        fieldnames += [f"returned_ids_k{k}", f"hit_k{k}"]
+        fieldnames += [f"returned_ids_k{k}", f"hit_k{k}", f"matched_by_k{k}"]
 
     with open(OUTPUT_CSV_PATH, "w", newline="", encoding="utf-8-sig") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)

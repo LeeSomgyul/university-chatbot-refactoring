@@ -7,12 +7,12 @@
 from typing import List, Optional
 from collections import defaultdict
 from app.domain.vector_search.vector_service import get_vector_service
-from app.domain.vector_search.keyword_service import get_keyword_service
+from app.domain.vector_search import keyword_service
 from app.models.schemas import HybridSearchResult, VectorSearchResult, KeywordSearchResult
 
 RRF_K = 60
 TOP_TEN = 10
-TOP_THREE = 3
+TOP_FIVE = 5
 
 # [보조 함수] 벡터 or 키워드 순위를 RRF 공식으로 융합
 def _reciprocal_rank_fusion(
@@ -64,9 +64,9 @@ def _reciprocal_rank_fusion(
 
 
 # [메인 함수] 벡터 + 키워드 검색 RRF 융합
-def get_hybrid_service(
+def search(
     query: str, 
-    k: int = TOP_THREE,
+    k: int = TOP_FIVE,
     category_filter: Optional[str] = None,
 ) -> List[HybridSearchResult]:
 
@@ -80,7 +80,7 @@ def get_hybrid_service(
     )
     
     # 2. 키워드 서비스 결과값 가져오기
-    keyword_result = get_keyword_service(
+    keyword_result = keyword_service.search(
         query=query,
         k=TOP_TEN,
         category_filter=category_filter

@@ -59,21 +59,6 @@ class VectorSearchService:
             print(f"❌ 벡터 검색 실패: {e}")
             return []
 
-    # [메인 함수] 벡터DB 결과를 사용자에게 전달할 텍스트 형식으로 다시 변환 
-    def format_search_results(self, results: List[VectorSearchResult]) -> str:
-        if not results:
-            return "관련 정보를 찾을 수 없습니다."
-        
-        formatted = []
-        for i, result in enumerate(results, 1):
-            title = result.metadata.get('title', '제목없음')
-            
-            formatted.append(
-                f"[{i}] {title}\n{result.content}\n"
-            )
-        
-        return "\n".join(formatted)
-
 
 # [싱글톤] 저장 메모리 공간 (여기서 빼가서 씀)
 vector_service = None
