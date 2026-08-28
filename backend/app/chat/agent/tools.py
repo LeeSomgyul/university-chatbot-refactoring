@@ -156,11 +156,17 @@ def search_general(
     )
     return result.message
 
-# 6. 식도락 검색 
+# 6. 식도락 검색
+# message: 사용자의 질문 원문
+# location_keyword: 키위매칭/LLM 풀백으로 얻은 위치 키워드
+# food_keyword: LLM으로 얻은 음식 키워드 (복수처리)
+# combine_mode: 복수 음식키워드 and/or 판단 (섹션 처리용)
 @tool(response_format="content_and_artifact")
 def search_restaurant(
+    message: str,
     location_keyword: Optional[str] = None,
-    food_keyword: Optional[str] = None
+    food_keyword: Optional[List[str]] = None,
+    combine_mode: Optional[str] = None,
 ):
     """
     학교 근처 음식점, 카페, 맛집 추천 요청을 처리한다. (카카오맵 실시간 검색)
@@ -169,29 +175,31 @@ def search_restaurant(
     - "정문 근처 떡볶이 맛집 추천해줘"
     - "맛집 추천해줘"
     - "순천대 근처 카페 알려줘"
+    - "정문 근처 중식이나 분식 맛집 추천해줘"
 
     위치나 음식 종류가 언급 안 될 수도 있다 (그럴 땐 인자를 비워둔다).
+
+    중요: 음식 종류가 2개 이상 언급되면(예: "중식이나 분식", "떡볶이랑 마라탕"),
+    이 함수를 여러 번 호출하지 말고 단 한 번만 호출하면서
+    food_keyword에 언급된 모든 음식을 리스트로 함께 담아라.
+    예: "중식이나 분식" → food_keyword=["중식", "분식"], combine_mode="or"
+    예: "떡볶이랑 마라탕" → food_keyword=["떡볶이", "마라탕"], combine_mode="and"
     """
     result = SearchRestaurant_handler.handle_search_restaurant_query(
         location_keyword=location_keyword,
-        food_keyword=food_keyword
+        food_keyword=food_keyword,
+        combine_mode=combine_mode,
+        message=message
     )
 
     message = result.message
-    restaurants = result.restaurants or []
+    restaurants = result.sections or []
+    sections = result.sections or []
 
     if not restaurants:
         return message, []
 
-    formatted = [message, ""]
-    for r in restaurants:
-        line = f"- {r.get('name')} ({r.get('category', '')}) | 주소: {r.get('address', '정보없음')}"
-        if r.get('phone'):
-            line += f" | 전화: {r['phone']}"
-        formatted.append(line)
-
-    content = "\n".join(formatted)
-    return content, restaurants
+    return message, sections
 
 
 # [함수 묶기] LLM(에이전트)이 아래 세트에서 골라서 자동으로 함수 사용

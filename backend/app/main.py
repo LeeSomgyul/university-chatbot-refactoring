@@ -7,7 +7,7 @@ load_dotenv()
 import sys
 import traceback
 
-from app.api import graduation
+from app.api import graduation, restaurant
 
 try:
     from fastapi import FastAPI, HTTPException
@@ -107,6 +107,9 @@ app.include_router(review_admin.router)
 app.include_router(autocomplete_router)
 app.include_router(calendar_router)
 app.include_router(faq_router)
+
+# 식도락 라우터
+app.include_router(restaurant.router)
 
 
 @app.get("/", response_model=HealthCheck)
@@ -218,9 +221,8 @@ async def chat(request: ChatRequest):
             "content": response.message,
             "timestamp": datetime.now()
         })
-        
-        response.session_id = session_id
-        return response
+        result = chat_dispatcher(request)
+        return result
     
     except Exception as e:
         print(f"❌ 챗봇 오류: {e}")

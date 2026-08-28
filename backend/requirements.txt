@@ -79,6 +79,8 @@ PyYAML==6.0.3
 RapidFuzz==3.14.5
 realtime==2.5.3
 redis==5.2.0
+kiwipiepy==0.23.2
+kiwipiepy_model==0.23.0
 regex==2026.7.19
 requests==2.34.2
 requests-toolbelt==1.0.0

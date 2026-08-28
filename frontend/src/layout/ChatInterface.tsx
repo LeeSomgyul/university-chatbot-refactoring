@@ -13,6 +13,7 @@ import { ChatbotService } from '../service/chatbotService';
 import React from 'react';
 import { FAQChild } from '../service/faqServices';
 import { RestaurantCards } from './RestaurantCards';
+import { RestaurantReviewForm } from './RestaurantReviewForm';
 
 
 
@@ -24,10 +25,15 @@ interface Message {
     type?: 'regular' | 'faq';
     faqOptions?: string[];
     children?: FAQChild[];
-    restaurants?: {
-        name: string;
-        address: string;
-        url: string;
+    sections?: {
+        keyword: string;
+        restaurants: {
+            name: string;
+            address: string;
+            url: string;
+            phone: string;
+            category: string;
+        }[];
     }[];
 }
 
@@ -107,8 +113,8 @@ const ChatInterface = ({ messages, setMessages }: ChatInterfaceProps) => {
                 text: response.message,
                 time: getCurrentTime(),
                 type: 'regular' as const,
-                restaurants: response.restaurants && response.restaurants.length > 0
-                    ? response.restaurants
+                sections: response.sections && response.sections.length > 0
+                    ? response.sections
                     : undefined
             }]);
 
@@ -479,6 +485,25 @@ const ChatInterface = ({ messages, setMessages }: ChatInterfaceProps) => {
         }
     };
 
+    //기능 16: 식도락 리뷰 기능
+    const handleRestaurantCreateReview =  (restaurant: { name: string; url: string }) => {
+        console.log("=========")
+        const currentTime = getCurrentTime();
+        setMessages([...messages, {
+                sender: '봇',
+                text: (
+                    <RestaurantReviewForm
+                        restaurant={restaurant}
+                        onSubmitted={()=>{
+
+                        }}
+                    />
+                ),
+                time: currentTime,
+                type: 'regular' as const,
+            }]);
+    }
+
     return (
         <div className='chat-interface'>
             <div className={`chat-container ${messages.length > 0 ? 'chat-active' : 'chat-empty'}`}>
@@ -578,7 +603,19 @@ const ChatInterface = ({ messages, setMessages }: ChatInterfaceProps) => {
                                                     </div>
                                                 )}
                                                 {/* 기능 19-2: 식도락(맛집) 카드 표시 */}
-                                                {msg.restaurants && <RestaurantCards restaurants={msg.restaurants} />}
+                                                {msg.sections && msg.sections.map((section, idx) => (
+                                                    <div key={idx} className="restaurant-section">
+                                                        {msg.sections!.length > 1 && (
+                                                            <div className="text-[#004C97] mt-5 font-bold">
+                                                                {section.keyword}
+                                                            </div>
+                                                        )}
+                                                        <RestaurantCards 
+                                                        restaurants={section.restaurants}
+                                                        onWriteReview={handleRestaurantCreateReview}
+                                                        />
+                                                    </div>
+                                                ))}
                                             </div>
                                         )}
                                         <div className="message-time">{msg.time}</div>

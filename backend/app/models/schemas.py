@@ -96,7 +96,8 @@ class HandlerResponse(BaseModel):
     sources: List[Dict[str, Any]] = Field(default_factory=list) # 어떤 DB의 데이터를 참고했는지 이름 
     user_profile: Optional[UserProfile] = None                  # 각 개인의 정보 (졸업사정 등은 개인 학번, 입학년도 등이 필요함)
     needs_profile: bool = False                                 # 답변이 완료된게 아니라 사용자에게 추가적인 질문을 더 해야하는지 여부 (개인 맞춤형 질문에서 사용)
-    restaurants: Optional[List[Dict[str, Any]]] = None
+    sections: Optional[List[Dict[str, Any]]] = None             # 식도락 키워드 묶음
+    restaurants: List[dict] = []                                # 키워드별 결과
 
 
 # [챗봇 요청] 사용자가 질문했을 때 프론트에서 들어오는 요청 형식
@@ -114,11 +115,17 @@ class ChatResponse(BaseModel):
     matched_function: Optional[str] = None
     user_profile: Optional[UserProfile] = None
     session_id: Optional[str] = None
-    restaurants: Optional[List[Dict[str, Any]]] = None
-    
+    sections: Optional[List[dict]] = None
+
 
 # [헬스 체크 응답]
 class HealthCheck(BaseModel):
     status: str
     timestamp: datetime
     version: str = "1.0.0"
+
+class RestaurantReviewCreate(BaseModel):
+    """식도락 리뷰 작성"""
+    place_url: str
+    place_name: Optional[str] = None
+    content: str

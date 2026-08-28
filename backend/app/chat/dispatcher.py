@@ -27,7 +27,7 @@ def _convert_messages(request: ChatRequest) -> List:
     # 2. message (금방 사용자가 한 새로운 질문)
     message.append(HumanMessage(content=request.message))
     
-    return message            
+    return message
 
 
 # [메인 함수] 챗봇 시작
@@ -53,6 +53,7 @@ def chat(request: ChatRequest) -> ChatResponse:
             
     # 4-1. 최종 함수 이름들        
     sources = [{"tool": msg.name} for msg in tool_messages]
+    print(f"tool:{sources}")
     
     # 5. (확인용) LLM이 추출한 맛집 목록
     restaurants = []
@@ -65,6 +66,6 @@ def chat(request: ChatRequest) -> ChatResponse:
         sources=sources,
         matched_function="agent_graph",
         session_id=request.session_id,
-        restaurants=restaurants if restaurants else None,
+        sections=restaurants if restaurants else None,
         user_profile=result_state.get("user_profile"),
     )
