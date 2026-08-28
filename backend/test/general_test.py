@@ -1,115 +1,119 @@
+"""
+DeepEval 평가용 actual_output / retrieval_context 수집 스크립트
+
+- general_testset_with_expected.json의 40개 질문을 실제 핸들러 로직
+  (handle_search_general_query와 동일한 흐름: hybrid_service.search() -> LLM 답변 생성)
+  으로 그대로 통과시켜서 진짜 검색 결과와 진짜 LLM 답변을 수집
+- 핸들러 함수 자체를 고치지 않고, 동일한 로직을 여기서 재현
+  (핸들러가 retrieval_context를 반환하지 않는 구조라, 평가 스크립트에서
+   별도로 같은 흐름을 그대로 따라가며 중간값도 함께 확보)
+- 결과를 general_testset_with_actual.json으로 저장
+
+실행 위치: backend/test/
+실행 방법: backend 폴더 기준
+    $ python test/collect_actual_output.py
+"""
 import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
 import json
-import csv
-from collections import defaultdict
-
+from langchain_openai import ChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate
+from app.config import settings
 from app.domain.vector_search import hybrid_service
 
 
-K_VALUES = [5] 
-TESTSET_PATH = "test/general_testset.json"
-OUTPUT_CSV_PATH = "test/general_results_after.csv"
+TESTSET_PATH = "test/general_testset_with_expected.json"
+OUTPUT_PATH = "test/general_testset_with_actual.json"
+
+_llm = None
 
 
-def load_testset(path: str) -> list[dict]:
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+def _get_llm() -> ChatOpenAI:
+    global _llm
+    if _llm is None:
+        _llm = ChatOpenAI(
+            model=settings.model_name,
+            temperature=settings.temperature,
+            max_tokens=settings.max_tokens,
+            openai_api_key=settings.openai_api_key
+        )
+    return _llm
 
 
-def is_hit(returned_ids: list[int], answer_ids: list[int]) -> bool:
-    """정답 id 중 하나라도 반환 결과에 포함되면 성공(보조 정답 포함 처리)"""
-    return any(a_id in returned_ids for a_id in answer_ids)
+# general_handler.py의 시스템 프롬프트와 동일하게 맞춤
+# (핸들러가 실제로 답변을 만드는 방식 그대로 재현하기 위함)
+_ANSWER_PROMPT = ChatPromptTemplate.from_messages([
+    ("system", """당신은 순천대학교 컴퓨터공학과 안내 챗봇입니다.
+주어진 정보를 바탕으로 학생의 질문에 친절하고 정확하게 답변해주세요.
+
+답변 규칙:
+1. 존댓말을 사용하고 친근하게 답변하세요
+2. 주어진 정보에 없는 내용은 "검색된 정보에서 찾을 수 없어요"라고 솔직히 말하세요
+3. 답변은 간결하게 핵심만 전달하세요
+4. 필요시 이모지를 활용해 친근함을 더하세요
+5. 마크다운 문법(**, ##, - 등)을 사용하지 마세요. 순수 텍스트와 이모지만 사용하세요
+6. 검색된 정보를 그대로 나열하지 말고, 질문에 맞춰 재구성하세요
+
+검색된 정보:
+{context}
+"""),
+    ("user", "{question}")
+])
 
 
-def run_evaluation():
-    testset = load_testset(TESTSET_PATH)
+def format_context(search_results) -> tuple[str, list[str]]:
+    """
+    hybrid_service.search() 결과를 LLM 프롬프트용 문자열과
+    DeepEval retrieval_context용 리스트 두 가지 형태로 만듦
+    """
+    formatted_list = []
+    for i, r in enumerate(search_results, 1):
+        title = r.metadata.get("title", "제목없음")
+        formatted_list.append(f"[{i}] {title}\n{r.content}")
 
-    rows = []
-    stats_by_k = {k: defaultdict(lambda: {"hit": 0, "total": 0}) for k in K_VALUES}
-    stats_by_k_type = {k: defaultdict(lambda: {"hit": 0, "total": 0}) for k in K_VALUES}
-    overall_by_k = {k: {"hit": 0, "total": 0} for k in K_VALUES}
+    context_str = "\n\n".join(formatted_list)
+    # retrieval_context는 DeepEval 관례상 문서 단위 리스트로 넣음
+    return context_str, formatted_list
 
-    for item in testset:
-        category = item["category"]
-        q_type = item["type"]
+
+def run():
+    with open(TESTSET_PATH, "r", encoding="utf-8") as f:
+        testset = json.load(f)
+
+    llm = _get_llm()
+    print(f"총 {len(testset)}개 질문에 대해 actual_output / retrieval_context 수집 시작...")
+
+    for i, item in enumerate(testset, 1):
         question = item["question"]
-        answer_ids = item["answer_ids"]
 
-        row = {
-            "category": category,
-            "type": q_type,
-            "question": question,
-            "answer_ids": answer_ids,
-        }
+        # 1. 실제 핸들러와 동일하게 하이브리드 검색 수행 (k=5, 운영값과 동일)
+        search_results = hybrid_service.search(question, k=5)
 
-        for k in K_VALUES:
-            results = hybrid_service.search(question, k=k)  # List[HybridSearchResult]
-            returned_ids = [r.id for r in results]
-            hit = is_hit(returned_ids, answer_ids)
+        if not search_results:
+            item["actual_output"] = "죄송해요, 관련 정보를 찾을 수 없어요. 다른 질문을 해주시겠어요? 🤔"
+            item["retrieval_context"] = []
+            print(f"  [{i}/{len(testset)}] {question[:30]}... (검색 결과 없음)")
+            continue
 
-            # 정답 id가 있다면, 그 문서가 어느 채널에서 잡혔는지 기록
-            # (없으면 빈 리스트 -> 실패 케이스)
-            matched_by_for_answer = []
-            for r in results:
-                if r.id in answer_ids:
-                    matched_by_for_answer = r.matched_by
-                    break
+        context_str, context_list = format_context(search_results)
 
-            row[f"returned_ids_k{k}"] = returned_ids
-            row[f"hit_k{k}"] = hit
-            row[f"matched_by_k{k}"] = matched_by_for_answer
+        # 2. 실제 핸들러와 동일한 프롬프트로 LLM 답변 생성
+        chain = _ANSWER_PROMPT | llm
+        response = chain.invoke({"context": context_str, "question": question})
 
-            stats_by_k[k][category]["total"] += 1
-            stats_by_k[k][category]["hit"] += int(hit)
+        item["actual_output"] = response.content.strip()
+        item["retrieval_context"] = context_list
 
-            stats_by_k_type[k][q_type]["total"] += 1
-            stats_by_k_type[k][q_type]["hit"] += int(hit)
+        print(f"  [{i}/{len(testset)}] {question[:30]}...")
+        print(f"      → {item['actual_output'][:60]}...")
 
-            overall_by_k[k]["total"] += 1
-            overall_by_k[k]["hit"] += int(hit)
+    with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
+        json.dump(testset, f, ensure_ascii=False, indent=2)
 
-        rows.append(row)
-
-    # ---- 콘솔 출력 ----
-    print("=" * 70)
-    print("After 측정 결과 — 하이브리드 검색 (벡터 + 키워드 RRF)")
-    print("=" * 70)
-
-    for k in K_VALUES:
-        print(f"\n--- k={k} (실제 운영값) ---")
-
-        print("\n[카테고리별 Recall]")
-        for category, s in stats_by_k[k].items():
-            recall = s["hit"] / s["total"] * 100
-            print(f"  {category:10s}: {s['hit']}/{s['total']}  ({recall:.0f}%)")
-
-        print("\n[질문 유형별 Recall]")
-        for q_type, s in stats_by_k_type[k].items():
-            recall = s["hit"] / s["total"] * 100
-            print(f"  {q_type:10s}: {s['hit']}/{s['total']}  ({recall:.0f}%)")
-
-        overall = overall_by_k[k]
-        overall_recall = overall["hit"] / overall["total"] * 100
-        print(f"\n[전체] {overall['hit']}/{overall['total']}  ({overall_recall:.0f}%)")
-
-    # ---- CSV 저장 ----
-    fieldnames = ["category", "type", "question", "answer_ids"]
-    for k in K_VALUES:
-        fieldnames += [f"returned_ids_k{k}", f"hit_k{k}", f"matched_by_k{k}"]
-
-    with open(OUTPUT_CSV_PATH, "w", newline="", encoding="utf-8-sig") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
-        for row in rows:
-            csv_row = {k_: (json.dumps(v_, ensure_ascii=False) if isinstance(v_, list) else v_)
-                       for k_, v_ in row.items()}
-            writer.writerow(csv_row)
-
-    print(f"\n상세 결과가 {OUTPUT_CSV_PATH} 에 저장됐습니다.")
+    print(f"\n완료. 결과가 {OUTPUT_PATH} 에 저장되었습니다.")
 
 
 if __name__ == "__main__":
-    run_evaluation()
+    run()
