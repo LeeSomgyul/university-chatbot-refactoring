@@ -135,7 +135,7 @@ def handle_search_restaurant_query(
         label = "/".join(results_by_food.keys())
         results_by_food = {label: all_results}
 
-# =============3. 리뷰 키워드별 카카오맵 결과 필터링
+    # =============4. 리뷰 키워드별 카카오맵 결과 필터링
     if review_query:
         sections= []
         has_any = False
@@ -147,14 +147,16 @@ def handle_search_restaurant_query(
                 has_any = True
                 top3 = matched[:3]
                 restaurants = []
+                section_review_match = True
                 for similarity, place, review_content in top3:
                     formatted = format_place(place)
                     formatted['review_summary'] = review_content
                     restaurants.append(formatted)
             # 매칭이 없는 경우 -> 음식/위치 키워드만 매칭된 값 폴백
             else:
+                section_review_match = False
                 restaurants = [attach_review_summary(p) for p in candidates[:3]]
-            sections.append({"keyword": kw, "restaurants": restaurants})
+            sections.append({"keyword": kw, "restaurants": restaurants, "review_matched": section_review_match})
 
         # 리뷰 기반 안내 메시지 준비
         if not has_any:
@@ -174,7 +176,7 @@ def handle_search_restaurant_query(
             last_restaurant_search={
                 "location_keyword": final_location_keyword,
                 "food_keyword": food_keyword,
-                "review_query": review_query,   # ★ 둘 다 저장
+                "review_query": review_query,
                 "shown_place_urls": shown_urls,
             }
         )

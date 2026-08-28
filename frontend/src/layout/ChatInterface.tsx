@@ -27,6 +27,7 @@ interface Message {
     children?: FAQChild[];
     sections?: {
         keyword: string;
+        review_matched: boolean;
         restaurants: {
             name: string;
             address: string;
@@ -487,7 +488,6 @@ const ChatInterface = ({ messages, setMessages }: ChatInterfaceProps) => {
 
     //기능 16: 식도락 리뷰 기능
     const handleRestaurantCreateReview =  (restaurant: { name: string; url: string }) => {
-        console.log("=========")
         const currentTime = getCurrentTime();
         setMessages([...messages, {
                 sender: '봇',
@@ -604,10 +604,21 @@ const ChatInterface = ({ messages, setMessages }: ChatInterfaceProps) => {
                                                 )}
                                                 {/* 기능 19-2: 식도락(맛집) 카드 표시 */}
                                                 {msg.sections && msg.sections.map((section, idx) => (
-                                                    <div key={idx} className="restaurant-section">
+                                                    <div key={idx} className="mt-3">
                                                         {msg.sections!.length > 1 && (
-                                                            <div className="text-[#004C97] mt-5 font-bold">
-                                                                {section.keyword}
+                                                            <div className='flex items-center gap-2'>
+                                                                {section.review_matched ?
+                                                                    <span className='bg-[#BADDFE] text-[#004C97] px-2 py-1 rounded-xl'>
+                                                                        리뷰 관련도순
+                                                                    </span>
+                                                                    :   
+                                                                    <span className='bg-[#BADDFE] text-[#004C97] px-2 py-1 rounded-xl'>
+                                                                        기본 추천
+                                                                    </span>
+                                                                }
+                                                                <div className="text-[#004C97] font-bold">
+                                                                    {section.keyword}
+                                                                </div>
                                                             </div>
                                                         )}
                                                         <RestaurantCards 
