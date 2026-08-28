@@ -68,6 +68,7 @@ CREATE INDEX idx_graduation_year_area ON graduation_requirements(admission_year,
 -- 3. 벡터 검색 테이블
 -- ============================================
 
+-- 3-1. 벡커 검색 documents 테이블 생성 
 DROP TABLE IF EXISTS documents CASCADE;
 CREATE TABLE documents (
     id BIGSERIAL PRIMARY KEY,
@@ -81,8 +82,8 @@ CREATE TABLE documents (
 CREATE INDEX ON documents USING hnsw (embedding vector_cosine_ops);
 CREATE INDEX idx_documents_metadata ON documents USING gin(metadata);
 
--- 벡터 검색 함수
-CREATE OR REPLACE FUNCTION match_documents (
+-- 3-2. 벡터 검색 함수 (유사도 측정)
+CREATE OR REPLACE FUNCTION match_documents_vector (
     query_embedding VECTOR(768),
     match_count INT DEFAULT 5,
     filter JSONB DEFAULT '{}'
@@ -112,6 +113,36 @@ BEGIN
     LIMIT match_count;
 END;
 $$;
+
+-- 3-3. 키워드 검색 함수 (빈도수, 일치정도 측정)
+CREATE OR REPLACE FUNCTION match_documents_keyword(
+  query_tsquery TEXT,
+  match_count INT,
+  filter jsonb default '{}'::jsonb
+)
+RETURNS TABLE (
+  id BIGINT,
+  content TEXT,
+  metadata JSONB,
+  rank_score REAL
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RETURN query
+  SELECT
+    d.id,
+    d.content,
+    d.metadata,
+    ts_rank(d.content_tsv, to_tsquery('simple', query_tsquery)) AS rank_score
+  FROM documents d
+  WHERE d.content_tsv @@ to_tsquery('simple', query_tsquery)
+    AND (filter = '{}'::jsonb or d.metadata @> filter)
+  ORDER BY rank_score DESC
+  LIMIT match_count;
+END;
+$$;
+
 
 -- ============================================
 -- 4. 학교 정보 테이블

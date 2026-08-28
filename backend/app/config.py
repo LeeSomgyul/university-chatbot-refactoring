@@ -18,9 +18,9 @@ class Settings(BaseSettings):
     supabase_service_key: str
     
     # LangSmith
-    langchain_tracing_v2: bool = False
+    langchain_tracing: bool = False
     langchain_api_key: str = ""
-    langchain_project: str = "school-chatbot"
+    langchain_project: str = "university-chatbot"
     
     # Application
     environment: str = "development"

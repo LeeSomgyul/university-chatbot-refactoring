@@ -8,6 +8,7 @@ from datetime import datetime
 
 from app.utils.embedding import get_embedding_model
 from app.database.supabase_client import supabase
+from app.utils.embedding_client import get_embedding_model
 
 
 router = APIRouter(prefix="/admin/reviews", tags=["Admin - Reviews"])
@@ -38,7 +39,6 @@ class RejectRequest(BaseModel):
     """거부 요청"""
     reviewed_by: Optional[str] = "admin"
     rejection_reason: str
-
 
 
 # ===== API Endpoints =====

@@ -61,7 +61,33 @@ class ChatMessage(BaseModel):
     role: str  # "user"(사용자) or "assistant"(챗봇)
     content: str
     timestamp: Optional[datetime] = None
+
+
+# [벡터 검색 결과 응답] documents 테이블에서 벡터검색 후 질문에 맞는것 같은 데이터를 찾아온 형식
+# - 설명: 해당 데이터는 정형화 되기 전의 형식으로, HandlerResponse를 만들기 위한 원본 재료이다.
+class VectorSearchResult(BaseModel):
+    id: int                                                 # documents 테이블의 실제 고유 id
+    content: str                                            # documents 테이블의 검색된 텍스트 본문
+    metadata: Dict[str, Any] = Field(default_factory=dict)  # category, title 등
+    similarity: Optional[float] = None                      # supabase에서 제공하는 유사도 
     
+
+# [키워드 검색 결과 응답] documents 테이블에서 키워드 검색 후 질문에 맞는것 같은 데이터를 찾아온 형식
+class KeywordSearchResult(BaseModel):
+    id: int
+    content: str
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    rank_score: Optional[float] = None  # ts_rank 점수 (사용자의 질문에 대한 content_tsv 값의 빈도수 및 포함 여부로 계산)
+    
+    
+# [벡터 검색 결과 + 키워드 검색 결과] RRF로 융합한 최종 결과 
+class HybridSearchResult(BaseModel):
+    id: int
+    content: str
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    rrf_score: float                                        # RRF 융합 점수 (등수)
+    matched_by: List[str] = Field(default_factory=list)     # 벡터 or 키워드 or 벡터+키워드 셋중에 어디서 가져온 데이터인지 
+
     
 # [핸들러 응답] 각 핸들러 함수가 공통으로 반환하는 형식
 class HandlerResponse(BaseModel):

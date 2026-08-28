@@ -3,7 +3,7 @@
 # ===============================================
 # 🚨 GetEquivalentCourse_handler.py 코드 스타일에 맞춰서 리팩토링하기
 
-from typing import Dict, Any, Optional
+from typing import Optional
 from app.models.schemas import UserProfile
 from app.models.schemas import HandlerResponse
 from app.services.entity_extractor import entity_extractor

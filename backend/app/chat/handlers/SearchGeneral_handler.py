@@ -2,33 +2,25 @@
 #        [핸들러] 벡터DB: 일반 정보 검색
 # ===============================================
 
-from typing import Dict, Any, List
+from typing import List
 
 from app.utils.llm_client import get_llm
-from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
-from app.config import settings
-from app.domain.vector_search.service import get_vector_service
+from app.domain.vector_search import hybrid_service
 from app.models.schemas import HandlerResponse
 
-_llm = None
-_vector_service = None
-
-
-def _get_vs():
-    global _vector_service
-    if _vector_service is None:
-        _vector_service = get_vector_service()
-    return _vector_service
 
 # [일반 정보 질문 처리 (벡터 검색)]
 def handle_search_general_query(message: str, history: List[BaseMessage] = None) -> HandlerResponse:
+    # 1. 이전 대화내역 존재 확인
     if history is None:
         history = []
 
+    # 2. 사용자의 질문 
     search_query = message
 
+    # 3. LLM에 프롬프트 전송 
     if history:
         try:
             history_text = ""
@@ -83,8 +75,8 @@ def handle_search_general_query(message: str, history: List[BaseMessage] = None)
             print(f"⚠️ 쿼리 재구성 실패, 원본 사용: {e}")
             search_query = message
 
-    vector_service = _get_vs()
-    search_results = vector_service.search(search_query, k=5)
+    # 4. RRF 검색 (벡터 + 키워드) 후 상위 5개 가져오기 
+    search_results = hybrid_service.search(search_query, k=5)
 
     if not search_results:
         return HandlerResponse(
@@ -92,7 +84,14 @@ def handle_search_general_query(message: str, history: List[BaseMessage] = None)
             matched_function="handle_search_general_query"
         )
 
-    context = vector_service.format_search_results(search_results)
+    # 5. Top5를 title, content를 리스트 형식으로 저장
+    formatted = []
+    for i, result in enumerate(search_results, 1):
+        title = result.metadata.get('title', '제목없음')
+        content = result.content
+        formatted.append(f"[{i}] {title}\n{content}\n")
+
+    context = "\n".join(formatted)
 
     messages = [
         ("system", f"""당신은 순천대학교 컴퓨터공학과 안내 챗봇입니다.
@@ -137,5 +136,5 @@ def handle_search_general_query(message: str, history: List[BaseMessage] = None)
     return HandlerResponse(
         message=answer,
         matched_function="handle_search_general_query",
-        sources=search_results
+        sources=[result.model_dump() for result in search_results] # HybridSearchResult 타입을 -> Dict 타입으로 변경
     )
