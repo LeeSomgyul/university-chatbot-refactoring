@@ -1,15 +1,16 @@
 from typing import Optional, List, Dict, Any
 
 from app.database.supabase_client import supabase
-from app.utils.embedding import get_embedding_model
+from app.utils import kiwi_client, embedding_client
 from app.utils.llm_client import generate_review_summary
-from kiwipiepy import Kiwi
 
 import re
 
 DEFAULT_LOCATION_KEYWORD = "순천대"
 
-kiwi = Kiwi()
+model = embedding_client.get_embedding_model()
+kiwi = kiwi_client.get_kiwi()
+
 # 순천대 캠퍼스 내 위치는 유한하므로 사용자 사전에 등록
 kiwi.add_user_word("정문","NNP")
 kiwi.add_user_word("도서관","NNP")
@@ -29,7 +30,6 @@ SIMILARITY_THRESHOLD = 0.3
 # review_query: LLM이 추출한 사용자가 원하는 리뷰 특징
 def match_by_review_query(candidates: list, review_query: str)-> list:
     # review_query를 벡터로 변환
-    model = get_embedding_model()
     query_embedding = model.encode(review_query).tolist()
 
     # matched: 가게,유사도,리뷰내용 조합

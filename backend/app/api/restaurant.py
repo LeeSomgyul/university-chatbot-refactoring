@@ -4,9 +4,14 @@
 from aiohttp.web_exceptions import HTTPException
 from app.database.supabase_client import supabase
 from app.models.schemas import RestaurantReviewCreate
-from app.utils.embedding import get_embedding_model
+from app.utils import embedding_client
+from app.utils.embedding_client import get_embedding_model
 from app.utils.llm_client import generate_review_summary
 from fastapi import APIRouter,BackgroundTasks
+from openai.types import embedding
+
+# (싱글톤)임베딩 모델 로드
+model = embedding_client.get_embedding_model()
 
 router = APIRouter(
     prefix="/api/restaurant",
@@ -43,8 +48,6 @@ async def create_restaurant_review(review: RestaurantReviewCreate, background_ta
 # 고유 ID, 벡터로 변환할 텍스트
 def generate_and_save_embedding(review_id: str, content: str):
     try:
-        # (싱글톤)임베딩 모델 로드
-        model = get_embedding_model()
         # 텍스트 -> 벡터 변환
         embedding = model.encode(content).tolist()
         # embedding 컬럼 값 : 벡터로 update

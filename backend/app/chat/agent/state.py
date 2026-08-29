@@ -2,7 +2,7 @@
 #  [복합 질문-1단계] LangGraph 그래프를 도는 동안 노드들 사이에서 공유되는 데이터 구조 
 # ===============================================
 
-from typing import Optional, TypedDict, List, Dict, Any
+from typing import Optional, TypedDict, List, Dict, Any, Annotated
 from langgraph.graph import MessagesState
 from langchain_core.messages import BaseMessage
 from app.models.schemas import UserProfile
@@ -15,10 +15,13 @@ from app.models.schemas import UserProfile
 # 5. (추가)user_profile: 개인 맞춤 정보가 필요한 도구를 호출할 때 필요 (예: 졸업사정)
 # 6. last_restaurant_search: 식도락 검색조건 + 보여준 장소 url => 세션저장필요
 # 7. (우회)last_search_sections: 맛집 카드 데이터 (일회성) => command방식은 함수~dispatcher까지 데이터통로가 state뿐
+def take_last(old, new):
+    return new
+
 class AgentState(MessagesState):
     user_profile: Optional[UserProfile]
     last_restaurant_search: Optional[Dict[str, Any]]
-    last_search_sections: Optional[List[Dict[str, Any]]]
+    last_search_sections: Annotated[Optional[List[Dict[str, Any]]], take_last]
 
 
 # [AgentState를 업데이트 할때 사용하는 DTO]

@@ -6,7 +6,6 @@ from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 
-from app.utils.embedding import get_embedding_model
 from app.database.supabase_client import supabase
 from app.utils.embedding_client import get_embedding_model
 

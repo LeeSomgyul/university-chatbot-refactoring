@@ -171,7 +171,7 @@ def search_restaurant(
     review_query: Optional[str] = None,
 )->Command:
     """
-    학교 근처 음식점, 카페, 맛집 추천 요청을 처리한다. (카카오맵 실시간 검색)
+    학교 근처 음식점, 카페, 맛집, 밥집, 술집 추천 요청을 처리한다. (카카오맵 실시간 검색)
 
     이 함수를 사용해야 하는 질문 예시:
     - "정문 근처 떡볶이 맛집 추천해줘"
@@ -181,7 +181,7 @@ def search_restaurant(
 
     위치나 음식 종류가 언급 안 될 수도 있다 (그럴 땐 인자를 비워둔다).
 
-    중요: 음식 종류가 2개 이상 언급되면(예: "중식이나 분식", "떡볶이랑 마라탕"),
+    중요: 음식 종류가 2개 이상 언급되면(예: "중식이나 분식", "떡볶이랑 마라탕", "술집이나 밥집"),
     이 함수를 여러 번 호출하지 말고 단 한 번만 호출하면서
     food_keyword에 언급된 모든 음식을 리스트로 함께 담아라.
     예: "중식이나 분식" → food_keyword=["중식", "분식"], combine_mode="or"
@@ -195,6 +195,8 @@ def search_restaurant(
     예: "가성비 좋은 분식집" → review_query="가성비"
     예: "청결한 식당 추천" → review_query="청결도"
     단순 음식 종류 요청("떡볶이 맛집 추천해줘")에는 review_query를 채우지 않는다.
+
+    중요: 이 도구는 반드시 한번만 호출한다
     """
     message = next(
         (m.content for m in reversed(state["messages"]) if isinstance(m, HumanMessage)),
