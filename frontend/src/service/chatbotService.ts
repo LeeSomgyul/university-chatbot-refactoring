@@ -6,7 +6,7 @@ interface ChatbotResponse {
     session_id: string;             // 세션 ID
     sections?: {                 // 식도락
         keyword: string;
-        review_mathced: boolean;
+        review_matched: boolean;
         restaurants: {
             name: string;
             address: string;
