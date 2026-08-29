@@ -1,0 +1,47 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches: [ "develop" ]
+
+env:
+  # (도커허브로 변경 가능)
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # 권한 설정
+    permissions:
+      contents: read
+      packages: write
+      
+    steps:
+    # 1. 현재 레포 코드를 가상 서버로 가져옴
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    # 2. ghcr.io에 로그인 (이미지 push하려면 인증 필요)
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        # 로그인할 레지스트리 주소
+        registry: ${{ env.REGISTRY }}
+        # 이 워크플로우를 실행시킨 GitHub 사용자명(자동)
+        username: ${{ github.actor }}
+        # GitHub이 워크플로우마다 자동 발급하는 임시 인증 토큰
+        password: ${{ secrets.GITHUB_TOKEN }}
+    # 3. Dockerfile로 이미지 빌드하고, 성공하면 ghcr.io로 push
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./backend
+        file: ./backend/Dockerfile
+        push: true
+        # 이 이미지에 붙일 태그(버전 이름)
+        tags: |
+          # Render 참조용 고정 주소
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          # 특정 커밋을 가리키는 고유 주소
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+    
