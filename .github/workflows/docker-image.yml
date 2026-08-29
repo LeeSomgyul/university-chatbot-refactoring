@@ -2,7 +2,7 @@ name: Build and Push Docker Image
 
 on:
   push:
-    branches: [ "develop" ]
+    branches: [ "dev" ]
 
 env:
   # (도커허브로 변경 가능)
