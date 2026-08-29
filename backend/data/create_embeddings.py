@@ -9,21 +9,14 @@ from typing import List, Dict
 sys.path.append(str(Path(__file__).parent.parent))
 
 from app.config import settings
-from supabase import create_client, Client
-from sentence_transformers import SentenceTransformer
+from app.utils.embedding_client import get_embedding_model
 
 
 class EmbeddingCreator:
     """임베딩 생성 및 업로드 클래스"""
     
     def __init__(self):
-        self.supabase = create_client(
-            settings.supabase_url, 
-            settings.supabase_service_key
-        )
-        print(f"📦 임베딩 모델 로딩 중: {settings.embedding_model}")
-        self.model = SentenceTransformer(settings.embedding_model)
-        print("✅ 모델 로딩 완료")
+        self.model = get_embedding_model()
     
     def load_from_text_file(self, file_path: str) -> List[Dict]:
         documents = []
@@ -203,7 +196,7 @@ class EmbeddingCreator:
         # Supabase에서 검색
         try:
             result = self.supabase.rpc(
-                'match_documents',
+                'match_documents_vector',
                 {
                     'query_embedding': query_embedding,
                     'match_count': k

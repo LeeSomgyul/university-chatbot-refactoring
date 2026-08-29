@@ -2,23 +2,23 @@
 강의평가 검색 서비스
 """
 from typing import List, Dict, Any, Optional
-from sentence_transformers import SentenceTransformer
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from app.config import settings
 from app.database.supabase_client import supabase
+from app.utils.embedding_client import get_embedding_model
 
 
 class ReviewSearchService:
     """강의평가 벡터 검색 서비스"""
     
     def __init__(self):
-        print(f"🔧 강의평가 임베딩 모델 로딩: {settings.embedding_model}")
-        self.model = SentenceTransformer(settings.embedding_model)
+        self.model = get_embedding_model()
         self.llm = None
-        
+    
         self.known_courses = self._load_courses_from_db()
         print(f"✅ 모델 로딩 완료 ({len(self.known_courses)}개 과목 로드됨)")
+        
         
     def _get_llm(self) -> ChatOpenAI:
         """LLM 인스턴스 가져오기"""
