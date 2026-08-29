@@ -12,6 +12,13 @@ DEFAULT_LOCATION_KEYWORD = "순천대"
 kiwi = Kiwi()
 # 순천대 캠퍼스 내 위치는 유한하므로 사용자 사전에 등록
 kiwi.add_user_word("정문","NNP")
+kiwi.add_user_word("도서관","NNP")
+kiwi.add_user_word("박물관","NNP")
+kiwi.add_user_word("학생회관","NNP")
+kiwi.add_user_word("기숙사","NNP")
+kiwi.add_user_word("체육관","NNP")
+kiwi.add_user_word("본부","NNP")
+kiwi.add_user_word("공대","NNP")
 kiwi.add_user_word("순천대", "NNP")
 
 # 리뷰 유사도 임계값

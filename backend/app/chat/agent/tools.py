@@ -5,7 +5,7 @@
 from typing import List, Annotated, Optional
 from app.chat.agent.state import AgentState
 from langchain_core.tools import tool
-from langchain_core.messages import BaseMessage, ToolMessage
+from langchain_core.messages import BaseMessage, ToolMessage, HumanMessage
 from langchain_core.tools import InjectedToolCallId
 from langgraph.prebuilt import InjectedState
 from langgraph.types import Command
@@ -196,7 +196,10 @@ def search_restaurant(
     예: "청결한 식당 추천" → review_query="청결도"
     단순 음식 종류 요청("떡볶이 맛집 추천해줘")에는 review_query를 채우지 않는다.
     """
-    message = state["messages"][-1].content
+    message = next(
+        (m.content for m in reversed(state["messages"]) if isinstance(m, HumanMessage)),
+        ""
+    )
     # 현재 검색한 조건 읽기
     print(f"[CURRENT CONDITION] location={location_keyword}, food={food_keyword}, review={review_query}")
 
