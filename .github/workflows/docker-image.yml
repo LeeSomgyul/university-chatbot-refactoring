@@ -2,7 +2,7 @@ name: Build and Push Docker Image
 
 on:
   push:
-    branches: [ "develop" ]
+    branches: [ "dev" ]
 
 env:
   # (도커허브로 변경 가능)
@@ -21,6 +21,9 @@ jobs:
     # 1. 현재 레포 코드를 가상 서버로 가져옴
     - name: Checkout repository
       uses: actions/checkout@v4
+    # 레포 이름을 소문자로 변환해서 이미지명 저장
+    - name: Convert repository name to lowercase
+      run: echo "IMAGE_NAME=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
     # 2. ghcr.io에 로그인 (이미지 push하려면 인증 필요)
     - name: Login to GitHub Container Registry
       uses: docker/login-action@v3
@@ -39,9 +42,8 @@ jobs:
         file: ./backend/Dockerfile
         push: true
         # 이 이미지에 붙일 태그(버전 이름)
+        # Render 참조용 고정 주소, 특정 커밋을 가리키는 고유 주소
         tags: |
-          # Render 참조용 고정 주소
           ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-          # 특정 커밋을 가리키는 고유 주소
           ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
     
