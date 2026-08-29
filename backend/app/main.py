@@ -58,9 +58,9 @@ except Exception as e:
 async def lifespan(app: FastAPI):
     """앱 생명주기 관리"""
     # 1. 시작 시
-    print("🚀 애플리케이션 시작")
-    print(f"✔️ 환경: {settings.environment}")
-    print(f"✔️ LLM 모델: {settings.model_name}")
+    print("애플리케이션 시작")
+    print(f" 환경: {settings.environment}")
+    print(f" LLM 모델: {settings.model_name}")
     
     # 1-1. 30분마다 1시간 동안 활동 없는 세션을 삭제하는 백그라운드 스케줄러 함수
     async def cleanup_old_sessions():
@@ -77,7 +77,7 @@ async def lifespan(app: FastAPI):
     
     # 3. 종료 시
     cleanup_task.cancel()
-    print("👋 애플리케이션 종료")
+    print(" 애플리케이션 종료")
 
 
 # [FastAPI 앱 생성]
@@ -135,24 +135,25 @@ async def chat(request: ChatRequest):
     """챗봇 대화 엔드포인트"""
     try:
         print(f"\n{'='*50}")
-        print(f"📬 새 요청 도착!")
+        print(f"새 요청 도착")
         print(f"{'='*50}")
         
         # 세션 관리
         session_id = request.session_id
         
-        print(f"  📨 받은 session_id: {session_id}")
-        print(f"  📊 현재 저장된 세션 수: {len(session_store.sessions)}")
-        print(f"  📋 저장된 세션 목록: {list(session_store.sessions.keys())}")
+        print(f"받은 session_id: {session_id}")
+        session_keys = session_store.redis_client.keys("session:*")
+        print(f"현재 저장된 세션 수: {len(session_keys)}")
+        print(f"저장된 세션 목록: {session_keys}")
         
         if not session_id:
             session_id = session_store.create_session(None)
-            print(f"  ✅ 새 세션 생성: {session_id}")
+            print(f"새 세션 생성: {session_id}")
         else:
             session = session_store.get_session(session_id)
             if not session:
                 session_id = session_store.create_session(None)
-                print(f"  ✅ 세션 만료, 새로 생성: {session_id}")
+                print(f"세션 만료, 새로 생성: {session_id}")
             elif request.user_profile:
                 session_store.update_profile(session_id, request.user_profile)
         
@@ -193,13 +194,13 @@ async def chat(request: ChatRequest):
         MAX_HISTORY = 2
         if len(history_for_llm) > MAX_HISTORY:
             history_for_llm = history_for_llm[-MAX_HISTORY:]
-            print(f"  📊 히스토리 제한: {len(session_messages)-1}개 → {len(history_for_llm)}개")
+            print(f"히스토리 제한: {len(session_messages)-1}개 → {len(history_for_llm)}개")
         
-        print(f"\n💬 대화 이력 ({len(history_for_llm)}개 메시지):")
+        print(f"\n대화 이력 ({len(history_for_llm)}개 메시지):")
         for msg in history_for_llm[-6:]:
             print(f"  {msg['role']}: {msg['content'][:50]}...")
         
-        print(f"\n📨 요청 정보:")
+        print(f"\n요청 정보:")
         print(f"  session_id: {session_id}")
         print(f"  현재 메시지: {request.message}")
         print(f"  user_profile: {user_profile}")
@@ -288,16 +289,20 @@ if settings.debug:
     @app.get("/debug/sessions")
     async def debug_sessions():
         """모든 세션 조회 (디버그용)"""
-        return {
-            "total_sessions": len(session_store.sessions),
-            "sessions": {
-                sid: {
+        session_keys=session_store.redis_client.keys("session:*")
+        sessions_info={}
+        for key in session_keys:
+            sid = key.replace("session:","")
+            data = session_store.get_session(sid)
+            if data:
+                sessions_info[sid]={
                     "has_profile": data.get('user_profile') is not None,
                     "message_count": len(data.get('history', [])),
                     "created_at": data.get('created_at'),
                 }
-                for sid, data in session_store.sessions.items()
-            }
+        return {
+            "total_sessions": len(session_keys),
+            "sessions": sessions_info
         }
 
 

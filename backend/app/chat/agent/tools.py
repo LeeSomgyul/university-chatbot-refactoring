@@ -4,6 +4,7 @@
 
 from typing import List, Annotated, Optional
 from app.chat.agent.state import AgentState
+from app.domain.restaurant.service import extract_location_keyword
 from langchain_core.tools import tool
 from langchain_core.messages import BaseMessage, ToolMessage, HumanMessage
 from langchain_core.tools import InjectedToolCallId
@@ -24,6 +25,19 @@ from app.chat.handlers import (
 def _get_history(state: AgentState) -> List[BaseMessage]:
     messages = state.get("messages", [])
     return messages[:-1] if messages else []
+
+# [위치 정규화] LLM이 자동으로 검색 조건을 추가하는 경우 방지
+def _normalize_location(loc: Optional[str]) -> Optional[str]:
+    if not loc:
+        return loc
+    return extract_location_keyword(loc) or loc
+
+# [도구 중복 호출 탐지] LangGraph가 도구가 의도치않게 재호출 하는 경우 방지
+def _messages_since_last_human(messages: List) -> List:
+    for i in range(len(messages) - 1, -1, -1):
+        if isinstance(messages[i], HumanMessage):
+            return messages[i+1:]
+    return messages
     
     
 # ======================= [메인 함수] =======================
@@ -195,37 +209,55 @@ def search_restaurant(
     예: "가성비 좋은 분식집" → review_query="가성비"
     예: "청결한 식당 추천" → review_query="청결도"
     단순 음식 종류 요청("떡볶이 맛집 추천해줘")에는 review_query를 채우지 않는다.
-
-    중요: 이 도구는 반드시 한번만 호출한다
     """
+    recent = _messages_since_last_human(state["messages"])
+    already_called = any(isinstance(m, ToolMessage) and m.name == "search_restaurant" for m in recent)
+
+    if already_called:
+        print("[GUARD] search_restaurant 이미 이번 턴에 호출됨 — 중복 호출 차단")
+        update: UpdateAgentState = {
+            "messages": [
+                ToolMessage(
+                    content="이미 검색을 완료했습니다. 이전 결과를 참고해 답변하세요.",
+                    tool_call_id=tool_call_id
+                )
+            ]
+        }
+        return Command(update=update)
+
     message = next(
         (m.content for m in reversed(state["messages"]) if isinstance(m, HumanMessage)),
         ""
     )
+
     # 현재 검색한 조건 읽기
     print(f"[CURRENT CONDITION] location={location_keyword}, food={food_keyword}, review={review_query}")
+
 
     # 검색 전 이전 조건 읽기 (state)
     previous_search = state.get("last_restaurant_search")
 
-    # 더 추천해줘 => 검색조건이 하나도 없을 경우에만 이전 조건 이어받기
-    if not location_keyword and previous_search:
+    # LLM 파라미터 셋 중 하나라도 비어있다면?
+    is_followup = not location_keyword and not food_keyword and not review_query
+
+    if is_followup and previous_search:
+        # LLM 파라미터 전부 무시, state의 이전 조건을 그대로 통째로 사용
         location_keyword = previous_search.get("location_keyword")
-        print(f"[PREV_SEARCH_DEBUG] location={location_keyword}")
-    if not food_keyword and not review_query and previous_search:
         food_keyword = previous_search.get("food_keyword")
         review_query = previous_search.get("review_query")
-        print(f"[PREV_SEARCH_DEBUG] food={food_keyword}, review={review_query}")
+        is_same_condition = True
+    else:
+        is_same_condition = (
+                previous_search is not None
+                and _normalize_location(location_keyword) == _normalize_location(previous_search.get("location_keyword"))
+                and food_keyword == previous_search.get("food_keyword")
+                and review_query == previous_search.get("review_query")
+        )
 
-    is_same_condition = (
-            previous_search is not None
-            and location_keyword == previous_search.get("location_keyword")
-            and food_keyword == previous_search.get("food_keyword")
-            and review_query == previous_search.get("review_query")
-    )
     print(f"[IS_SAME_CONDITION] 이전 검색조건 일치 여부: {is_same_condition}")
     exclude_urls = previous_search.get("shown_place_urls") if is_same_condition else None
     print(f"[EXCLUDE_URLS] {exclude_urls}")
+
     # 함수실행
     result = SearchRestaurant_handler.handle_search_restaurant_query(
         location_keyword=location_keyword,

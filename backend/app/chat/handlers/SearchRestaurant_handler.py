@@ -44,7 +44,7 @@ def handle_search_restaurant_query(
     if kiwi_location:
         print(f"[LOCATION] Kiwi 매칭 성공: {kiwi_location}")
     elif location_keyword:
-        print(f"[LOCATION] Kiwi 매칭 실패, LLM 폴백값 사용: {location_keyword}")
+        print(f"[LOCATION] Kiwi 매칭 실패, 전달받은 위치값 사용: {location_keyword}")
     else:
         print(f"[LOCATION] Kiwi/LLM 둘 다 실패, 기본값 사용 예정")
 
