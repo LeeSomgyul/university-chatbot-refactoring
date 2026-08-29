@@ -39,9 +39,8 @@ jobs:
         file: ./backend/Dockerfile
         push: true
         # 이 이미지에 붙일 태그(버전 이름)
+        # Render 참조용 고정 주소, 특정 커밋을 가리키는 고유 주소
         tags: |
-          # Render 참조용 고정 주소
           ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-          # 특정 커밋을 가리키는 고유 주소
           ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
     
