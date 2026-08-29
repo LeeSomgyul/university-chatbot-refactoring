@@ -46,4 +46,7 @@ jobs:
         tags: |
           ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+      # 4. 이미지 push 완료 후 Render에 배포 트리거
+    - name: Trigger Render deploy
+      run: curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
     
