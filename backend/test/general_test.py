@@ -1,118 +1,148 @@
 """
-DeepEval 평가용 actual_output / retrieval_context 수집 스크립트
+DeepEval 평가 스크립트 — 1순위 4개 지표 측정
 
-- general_testset_with_expected.json의 40개 질문을 실제 핸들러 로직
-  (handle_search_general_query와 동일한 흐름: hybrid_service.search() -> LLM 답변 생성)
-  으로 그대로 통과시켜서 진짜 검색 결과와 진짜 LLM 답변을 수집
-- 핸들러 함수 자체를 고치지 않고, 동일한 로직을 여기서 재현
-  (핸들러가 retrieval_context를 반환하지 않는 구조라, 평가 스크립트에서
-   별도로 같은 흐름을 그대로 따라가며 중간값도 함께 확보)
-- 결과를 general_testset_with_actual.json으로 저장
+- general_testset_with_actual.json (question, expected_output, actual_output,
+  retrieval_context가 모두 채워진 40개 데이터)을 LLMTestCase로 변환
+- ContextualRecallMetric, ContextualPrecisionMetric, FaithfulnessMetric,
+  AnswerRelevancyMetric 4개를 각각 측정
+- 카테고리별 평균 점수 + 전체 평균 점수를 출력하고, 각 케이스의 reasoning을
+  CSV로 저장 (포트폴리오 문서화 시 구체적 근거로 활용)
 
 실행 위치: backend/test/
 실행 방법: backend 폴더 기준
-    $ python test/collect_actual_output.py
+    $ python test/run_deepeval.py
 """
 import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
 import json
-from langchain_openai import ChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate
+import csv
+import time
+from collections import defaultdict
+
+from deepeval import evaluate
+from deepeval.test_case import LLMTestCase
+from deepeval.evaluate.configs import AsyncConfig
+from deepeval.metrics import (
+    ContextualRecallMetric,
+    ContextualPrecisionMetric,
+    FaithfulnessMetric,
+    AnswerRelevancyMetric,
+)
+
 from app.config import settings
-from app.domain.vector_search import hybrid_service
 
 
-TESTSET_PATH = "test/general_testset_with_expected.json"
-OUTPUT_PATH = "test/general_testset_with_actual.json"
+TESTSET_PATH = "test/general_testset_with_actual.json"
+OUTPUT_CSV_PATH = "test/deepeval_results.csv"
 
-_llm = None
+# DeepEval 판정 LLM 모델 (프로젝트에서 이미 쓰는 모델과 동일하게)
+JUDGE_MODEL = settings.model_name
 
 
-def _get_llm() -> ChatOpenAI:
-    global _llm
-    if _llm is None:
-        _llm = ChatOpenAI(
-            model=settings.model_name,
-            temperature=settings.temperature,
-            max_tokens=settings.max_tokens,
-            openai_api_key=settings.openai_api_key
+def load_testset() -> list[dict]:
+    with open(TESTSET_PATH, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def build_test_cases(testset: list[dict]) -> list[LLMTestCase]:
+    test_cases = []
+    for item in testset:
+        test_case = LLMTestCase(
+            input=item["question"],
+            actual_output=item["actual_output"],
+            expected_output=item["expected_output"],
+            retrieval_context=item["retrieval_context"],
         )
-    return _llm
-
-
-# general_handler.py의 시스템 프롬프트와 동일하게 맞춤
-# (핸들러가 실제로 답변을 만드는 방식 그대로 재현하기 위함)
-_ANSWER_PROMPT = ChatPromptTemplate.from_messages([
-    ("system", """당신은 순천대학교 컴퓨터공학과 안내 챗봇입니다.
-주어진 정보를 바탕으로 학생의 질문에 친절하고 정확하게 답변해주세요.
-
-답변 규칙:
-1. 존댓말을 사용하고 친근하게 답변하세요
-2. 주어진 정보에 없는 내용은 "검색된 정보에서 찾을 수 없어요"라고 솔직히 말하세요
-3. 답변은 간결하게 핵심만 전달하세요
-4. 필요시 이모지를 활용해 친근함을 더하세요
-5. 마크다운 문법(**, ##, - 등)을 사용하지 마세요. 순수 텍스트와 이모지만 사용하세요
-6. 검색된 정보를 그대로 나열하지 말고, 질문에 맞춰 재구성하세요
-
-검색된 정보:
-{context}
-"""),
-    ("user", "{question}")
-])
-
-
-def format_context(search_results) -> tuple[str, list[str]]:
-    """
-    hybrid_service.search() 결과를 LLM 프롬프트용 문자열과
-    DeepEval retrieval_context용 리스트 두 가지 형태로 만듦
-    """
-    formatted_list = []
-    for i, r in enumerate(search_results, 1):
-        title = r.metadata.get("title", "제목없음")
-        formatted_list.append(f"[{i}] {title}\n{r.content}")
-
-    context_str = "\n\n".join(formatted_list)
-    # retrieval_context는 DeepEval 관례상 문서 단위 리스트로 넣음
-    return context_str, formatted_list
+        # 카테고리 정보는 LLMTestCase 표준 필드가 아니므로 별도 속성으로 붙여서
+        # 나중에 결과 집계할 때 참조 (DeepEval이 막지 않는 방식)
+        test_cases.append(test_case)
+    return test_cases
 
 
 def run():
-    with open(TESTSET_PATH, "r", encoding="utf-8") as f:
-        testset = json.load(f)
+    testset = load_testset()
+    all_test_cases = build_test_cases(testset)
 
-    llm = _get_llm()
-    print(f"총 {len(testset)}개 질문에 대해 actual_output / retrieval_context 수집 시작...")
+    print(f"총 {len(all_test_cases)}개 케이스에 대해 DeepEval 4개 지표 측정 시작...")
+    print(f"판정 모델: {JUDGE_MODEL}")
 
-    for i, item in enumerate(testset, 1):
-        question = item["question"]
+    metrics = [
+        ContextualRecallMetric(model=JUDGE_MODEL, include_reason=True),
+        ContextualPrecisionMetric(model=JUDGE_MODEL, include_reason=True),
+        FaithfulnessMetric(model=JUDGE_MODEL, include_reason=True),
+        AnswerRelevancyMetric(model=JUDGE_MODEL, include_reason=True),
+    ]
 
-        # 1. 실제 핸들러와 동일하게 하이브리드 검색 수행 (k=5, 운영값과 동일)
-        search_results = hybrid_service.search(question, k=5)
+    # 동시 실행 개수를 확 줄이고, 각 케이스 사이에 지연시간을 둬서
+    # rate limit / 타임아웃 방지 (DeepEval 공식 AsyncConfig 사용)
+    results = evaluate(
+        test_cases=all_test_cases,
+        metrics=metrics,
+        async_config=AsyncConfig(max_concurrent=2, throttle_value=3),
+    )
+    all_test_results = results.test_results
 
-        if not search_results:
-            item["actual_output"] = "죄송해요, 관련 정보를 찾을 수 없어요. 다른 질문을 해주시겠어요? 🤔"
-            item["retrieval_context"] = []
-            print(f"  [{i}/{len(testset)}] {question[:30]}... (검색 결과 없음)")
-            continue
+    # ---- 결과 집계 ----
+    # metric 이름별로 카테고리별 점수 누적
+    scores_by_metric_category = defaultdict(lambda: defaultdict(list))
+    scores_by_metric_overall = defaultdict(list)
 
-        context_str, context_list = format_context(search_results)
+    csv_rows = []
 
-        # 2. 실제 핸들러와 동일한 프롬프트로 LLM 답변 생성
-        chain = _ANSWER_PROMPT | llm
-        response = chain.invoke({"context": context_str, "question": question})
+    for test_result in all_test_results:
+        category = None
+        # test_result.input으로 원본 케이스 역추적해서 category 매핑
+        matched_item = next(
+            (item for item in testset if item["question"] == test_result.input), None
+        )
+        category = matched_item["category"] if matched_item else "unknown"
+        q_type = matched_item["type"] if matched_item else "unknown"
 
-        item["actual_output"] = response.content.strip()
-        item["retrieval_context"] = context_list
+        row = {
+            "category": category,
+            "type": q_type,
+            "question": test_result.input,
+        }
 
-        print(f"  [{i}/{len(testset)}] {question[:30]}...")
-        print(f"      → {item['actual_output'][:60]}...")
+        for metric_data in test_result.metrics_data:
+            metric_name = metric_data.name
+            score = metric_data.score
+            reason = metric_data.reason
 
-    with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
-        json.dump(testset, f, ensure_ascii=False, indent=2)
+            scores_by_metric_category[metric_name][category].append(score)
+            scores_by_metric_overall[metric_name].append(score)
 
-    print(f"\n완료. 결과가 {OUTPUT_PATH} 에 저장되었습니다.")
+            row[f"{metric_name}_score"] = score
+            row[f"{metric_name}_reason"] = reason
+
+        csv_rows.append(row)
+
+    # ---- 콘솔 출력 ----
+    print("\n" + "=" * 70)
+    print("DeepEval 평가 결과")
+    print("=" * 70)
+
+    for metric_name, scores in scores_by_metric_overall.items():
+        avg = sum(scores) / len(scores)
+        print(f"\n--- {metric_name} ---")
+        print(f"전체 평균: {avg:.2f}")
+
+        print("카테고리별 평균:")
+        for category, cat_scores in scores_by_metric_category[metric_name].items():
+            cat_avg = sum(cat_scores) / len(cat_scores)
+            print(f"  {category:10s}: {cat_avg:.2f} (n={len(cat_scores)})")
+
+    # ---- CSV 저장 (reasoning 포함, 문서화용) ----
+    if csv_rows:
+        fieldnames = list(csv_rows[0].keys())
+        with open(OUTPUT_CSV_PATH, "w", newline="", encoding="utf-8-sig") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(csv_rows)
+
+        print(f"\n상세 결과(reasoning 포함)가 {OUTPUT_CSV_PATH} 에 저장되었습니다.")
 
 
 if __name__ == "__main__":
