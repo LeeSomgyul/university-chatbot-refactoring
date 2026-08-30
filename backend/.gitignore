@@ -40,3 +40,6 @@ build/
 
 # ===== Jupyter =====
 .ipynb_checkpoints/
+
+# ===== 임베딩 백업 (재임베딩 스크립트 산출물, 운영 데이터 원본 벡터 포함) =====
+data/embedding_backups/
