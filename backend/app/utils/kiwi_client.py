@@ -11,5 +11,5 @@ _kiwi = None
 def get_kiwi() -> Kiwi:
     global _kiwi
     if _kiwi is None:
-        _kiwi = Kiwi()
+        _kiwi = Kiwi(num_workers=1)
     return _kiwi
