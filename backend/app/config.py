@@ -30,7 +30,8 @@ class Settings(BaseSettings):
     
     # LLM Settings
     model_name: str = "gpt-4o-mini"
-    embedding_model: str = "jhgan/ko-sroberta-multitask"
+    embedding_model: str = "text-embedding-3-small"
+    embedding_dimensions: int = 768
     max_tokens: int = 500
     temperature: float = 0.3
     
