@@ -21,6 +21,11 @@ from app.domain.restaurant.service import match_by_review_query, attach_review_s
     extract_location_keyword, resolve_location, augment_food_keywords, detect_combine_mode
 from app.models.schemas import HandlerResponse
 
+import resource
+
+def log_memory(tag):
+    mem = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024  # MB
+    print(f"[MEMORY] {tag}: {mem:.1f} MB")
 
 def handle_search_restaurant_query(
         # LLM이 뽑아준 원본 값(참고용/폴백)
@@ -37,7 +42,9 @@ def handle_search_restaurant_query(
 )-> HandlerResponse:
     # =========1.위치 추출=============
     # 위치는 kiwi로 우선 추출
+    log_memory("*함수시작")
     kiwi_location = extract_location_keyword(message)
+    log_memory("*extract_location_keyword 완료")
     # Kiwi 우선, 안 되면 LLM 값 폴백
     final_location_keyword = kiwi_location or location_keyword
 
@@ -50,6 +57,7 @@ def handle_search_restaurant_query(
 
     # 좌표 추출
     location = resolve_location(final_location_keyword)
+    log_memory("*resolve_location 완료")
 
     # 위치 기본값도 매칭 못했다면
     if location["latitude"] is None:
@@ -74,6 +82,7 @@ def handle_search_restaurant_query(
     # ── 음식 키워드 / combine_mode 보정 ──
     food_keyword = augment_food_keywords(message, food_keyword)
     combine_mode = detect_combine_mode(message, combine_mode)
+    log_memory("*food_keyword 보정 완료")
 
     print(f"[FOOD] 보정 후 food_keyword={food_keyword}, combine_mode={combine_mode}")
 
@@ -102,7 +111,7 @@ def handle_search_restaurant_query(
             for kw in food_keyword
         }
     print(f"[KAKAO] 검색 결과 개수: { {kw: len(v) for kw, v in results_by_food.items()} }")
-
+    log_memory("*카카오맵 검색 완료")
     if exclude_urls:
         results_by_food = {
             kw: [r for r in results if r.get('place_url') not in exclude_urls]
@@ -134,7 +143,7 @@ def handle_search_restaurant_query(
         all_results = [r for results in results_by_food.values() for r in results]
         label = "/".join(results_by_food.keys())
         results_by_food = {label: all_results}
-
+    log_memory("*리뷰 매칭 전")
     # =============4. 리뷰 키워드별 카카오맵 결과 필터링
     if review_query:
         sections= []
